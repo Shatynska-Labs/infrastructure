@@ -174,6 +174,7 @@ jobs:
           records=$(mktemp)
           refused=0
           discovered_names=""
+          excluded=""
 
           for source in "$inventory_root"/*"$source_suffix"; do
             [ -f "$source" ] || continue
@@ -207,6 +208,46 @@ jobs:
               refused=1
               continue
             fi
+
+            # A STACK MAY DECLARE THAT IT HAS NO HOST TO CONVERGE
+            # (let-a-stack-opt-out-of-the-converge). `converges_host` names what
+            # is true when it is TRUE, like `deploys_platform`, and its default
+            # is the opposite of that field's for the reason both share: each
+            # default is the value that is safe when the field was forgotten,
+            # and a host dropped from the converge by a forgotten field drifts
+            # from its firewall, SSH and account baseline with nothing reporting
+            # it. So absent converges.
+            #
+            # Read BEFORE the required fields and acted on at once: an excluded
+            # stack is not refused for a field only its converge would consume,
+            # because switching a stack off must not be harder than switching it
+            # on. The source/declaration cross-check after this loop still covers
+            # it -- that is a property of the tree, not of a converge.
+            #
+            # The control-character refusal comes first, before the value is
+            # branched on, so neither branch below echoes an unrepresentable
+            # value -- the order platform-deploy.yml uses for `deploys_platform`.
+            # An unrecognised value is refused rather than read as either
+            # answer: a typo must be neither a silent opt-out nor a silent
+            # converge of a host the operator switched off.
+            converges_host="$(field "$declaration" converges_host)"
+            case "$converges_host" in
+              *[[:cntrl:]]*)
+                echo "::error::${name}: ${declaration} carries a control character in 'converges_host'. Refusing to read a declaration this step cannot represent."
+                refused=1
+                continue
+                ;;
+              "" | true) ;;
+              false)
+                excluded="${excluded}${name} "
+                continue
+                ;;
+              *)
+                echo "::error::${name}: ${declaration} states 'converges_host: ${converges_host}', which is neither 'true' nor 'false'. This field decides whether this stack's host is converged at all, and an unrecognised value is refused rather than read as either answer."
+                refused=1
+                continue
+                ;;
+            esac
 
             github_environment="$(field "$declaration" github_environment)"
             read_only_secret="$(field "$declaration" read_only_secret)"
@@ -323,8 +364,22 @@ jobs:
             done
           fi
 
+          # Named rather than silent, and as an annotation so it shows on the
+          # run page rather than only inside this step's log. A stack left out
+          # of the matrix is otherwise visible only in its own absence, which
+          # is the one place nobody looks.
+          if [ -n "$excluded" ]; then
+            echo "::notice::Excluded by their own declarations, and converged by nothing: ${excluded}"
+          fi
+
           if [ ! -s "$records" ] && [ "$refused" -eq 0 ]; then
+            if [ -n "$excluded" ]; then
+              echo "::error::Every stack discovery found is excluded from the converge by its own declaration ('converges_host: false'), so no host would be converged. Refusing to report success having converged nothing. Excluded: ${excluded}"
+              rm -f "$records"
+              exit 1
+            fi
             echo "::error::Discovery found no inventory source under ${inventory_root}/, so no stack has a host configuration to apply. Refusing to report success having discovered nothing."
+            rm -f "$records"
             exit 1
           fi
 
@@ -345,6 +400,16 @@ jobs:
           # mistyped "pr od" as a stack rather than refusing it by name.
           requested="$(printf '%s' "${REQUESTED_STACK:-}" | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')"
           if [ -n "$requested" ]; then
+            # An excluded stack was FOUND, so "not found" would send the
+            # operator looking for a typo. Say what is true instead, and point
+            # at the declaration that decides it.
+            case " ${excluded}" in
+              *" ${requested} "*)
+                echo "::error::This run was requested for '${requested}', which is excluded from the converge by its own declaration ('converges_host: false' in ${stacks_root}/${requested}/${declaration_name}), so it has no host to converge. Change that declaration to converge it."
+                rm -f "$records"
+                exit 1
+                ;;
+            esac
             if ! awk -F'\t' -v want="$requested" '$1 == want { found = 1 } END { exit !found }' "$records"; then
               echo "::error::This run was requested for '${requested}', which discovery did not find. What it did find: ${discovered_names}"
               rm -f "$records"

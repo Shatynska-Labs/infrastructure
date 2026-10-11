@@ -226,6 +226,8 @@ Then prove the key is usable, by making the pipeline use it:
 gh workflow run host-converge.yml --ref main -f stack=main-staging
 ```
 
+**While `main-staging` is excluded this dispatch fails by design**, naming the exclusion: since `let-a-stack-opt-out-of-the-converge` its `pipeline.yml` declares `converges_host: false` and `deploys_platform: false`, because its server is decommissioned. Rebuilding staging starts with flipping both back to `true`, in the same pull request that sets `server_enabled = true` in its `terraform.tfvars`.
+
 **That dispatch is the check and it is not optional**: a key installed but not usable fails at the next merge touching `ansible/`, long after you have stopped watching. It is also the only check available to you, and the reason is worth stating so that nobody restores the shorter one: the obvious test is `ssh -i ~/.ssh/shatynska-ansible-ci-main-staging root@main-staging true`, and **you cannot run it** — that private half was deleted when it was stored, and the only copy is the Environment secret the pipeline reads. The dispatch exercises exactly that copy, which is the one that has to work.
 
 **Then read it, by phase 10's recipe** — `gh workflow run` prints no run id and returns before the run exists, so take the id of the run whose `createdAt` is after your dispatch and `gh run watch <id>`. A dispatch nobody reads is not a check. What you want is a green run; `changed=0` is the expected result and not a sign it did nothing, because this is the same play phase 7 has just run by hand.

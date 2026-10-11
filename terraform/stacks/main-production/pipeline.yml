@@ -128,9 +128,10 @@ destroy_policy_gate: true
 # `platform_excluded: false` would be the same value with the opposite
 # meaning, and nothing in a value can tell a reader which was meant.
 #
-# THE TWO OPTIONAL FIELDS DEFAULT TO OPPOSITE VALUES, FOR ONE REASON. Each
-# default is the safe value when the field was forgotten. For the destroy
-# policy that is "the gate applies"; for this it is "deployed to by nothing",
+# THE OPTIONAL FIELDS' DEFAULTS DIFFER, FOR ONE REASON. Each default is the
+# safe value when the field was forgotten. For the destroy policy that is "the
+# gate applies"; for `converges_host` below it is "converged"; for this it is
+# "deployed to by nothing",
 # because a new stack has none of the nine `PLATFORM_*` secrets when its
 # directory is first committed, and a default of `true` would have its first
 # merge touching `platform/**` attempt a deploy under credentials that do not
@@ -160,3 +161,25 @@ destroy_policy_gate: true
 # deploy, the same disagreement surfaces as an authentication failure after
 # the tailnet join and after a human approved it.
 deploys_platform: true
+
+# Whether the host-configuration workflow converges this stack's host.
+# OPTIONAL; absent means it IS (let-a-stack-opt-out-of-the-converge), which
+# is why this stack does not set it.
+#
+# POLARITY IS LOAD-BEARING AND LIVES IN THE NAME, as for the two fields above:
+# `true` means converged. `host_excluded: false` would be the same value with
+# the opposite meaning.
+#
+# ITS DEFAULT IS THE OPPOSITE OF `deploys_platform`'S, by the rule both follow.
+# A host left out of the converge by a forgotten field has its firewall, SSH
+# configuration and operator accounts silently stop being applied, which is
+# the failure the converge exists to prevent and one nothing reports. So a
+# declaration that says nothing converges.
+#
+# DECLARED, NOT DERIVED FROM `server_enabled` in this directory's
+# terraform.tfvars. No workflow reads a `.tfvars` file -- that is what this
+# file being `.yml` keeps apart -- so a stack whose server is decommissioned
+# says so here as well, and one being re-enabled flips this back in the same
+# pull request that sets `server_enabled = true`. Set `false`, the converge
+# names the stack as excluded and runs no row for it; plan, apply and drift
+# read nothing here and keep covering it.
