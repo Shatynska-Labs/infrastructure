@@ -243,6 +243,18 @@ def normalised(key: object) -> str:
 # --------------------------------------------------------------------------
 
 
+def converges_host_as_discovery_reads_it(path: Path | None) -> str:
+    """`converges_host` exactly as `host-converge.yml`'s `field()` yields it."""
+    if path is None:
+        return ""
+    for line in path.read_text(encoding="utf-8").splitlines():
+        match = re.match(r"^\s*converges_host\s*:\s*(.*)$", line)
+        if match:
+            value = re.sub(r"\s+#.*$", "", match.group(1)).strip()
+            return re.sub(r'^"(.*)"$|^\'(.*)\'$', lambda m: m.group(1) or m.group(2) or "", value)
+    return ""
+
+
 def platform_opt_in(mapping: dict) -> tuple:
     """`(value, offence)` for one declaration's platform opt-in.
 
@@ -1100,13 +1112,33 @@ class TestEveryStackThatReceivesThePlatformStackDeclaresIt(unittest.TestCase):
         taken out of the platform deploy: an opt-out is legitimate and is what
         the field is for, and the repair is to record that decision here rather
         than to delete the assertion.
+
+        RECONSIDERED by let-a-stack-opt-out-of-the-converge, which took
+        `main-staging` out of the platform deploy because its server was
+        decommissioned (that change's design.md, Decision 5). The decision is
+        recorded as a rule rather than as a stack name: every stack that has a
+        host to reach -- one whose declaration does not say `converges_host:
+        false` -- still receives the platform stack, so a change pointing the
+        workflow at production alone while staging is live is still reported.
+
+        The field is read as `host-converge.yml`'s `field()` reads it -- the
+        first `converges_host:` line's raw text, inline comment and one layer
+        of quotes stripped -- rather than through a YAML parser, which would
+        read `no`/`off` as false where the workflow refuses them, read a quoted
+        `"false"` as a string where the workflow excludes, and take the last of
+        two duplicated keys where the workflow takes the first.
         """
         self.test_the_repository_has_at_least_one_stack()
+        with_a_host = sorted(
+            name
+            for name, declaration in self.declarations.items()
+            if converges_host_as_discovery_reads_it(declaration.path) != "false"
+        )
         self.assertEqual(
-            sorted(self.declarations),
+            with_a_host,
             opting_in(),
-            "every stack this repository holds is expected to receive the shared "
-            "platform stack after this change; these declarations do not say so: "
+            "every stack with a host to reach is expected to receive the shared "
+            "platform stack; these declarations do not say so: "
             f"{sorted(platform_opt_ins().items())}",
         )
 
