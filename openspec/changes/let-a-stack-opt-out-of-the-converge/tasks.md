@@ -10,7 +10,7 @@ No Molecule scenario is owed: no role changes. What changes is which stacks a wo
 
 - [x] 1.1 Plan review by `ai-toolkit:change-plan-reviewer` reaches a verdict that permits proceeding, and any conditions are applied.
 - [x] 1.2 Commit the approved plan.
-- [ ] 1.3 Derive tests from this change's delta specification with `ai-toolkit:change-test-writer`, using the `.github/tests` row of the project's test table, and commit them.
+- [x] 1.3 Derive tests from this change's delta specification with `ai-toolkit:change-test-writer`, using the `.github/tests` row of the project's test table, and commit them.
 
 ## 2. The converge reads `converges_host`
 
