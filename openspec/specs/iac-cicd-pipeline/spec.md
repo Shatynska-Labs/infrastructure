@@ -848,6 +848,8 @@ The workflow SHALL name no stack. Which stacks exist, which GitHub Environment g
 
 Discovery SHALL fail closed, with a message naming the stack and what was wrong, rather than omitting a stack from the run. A stack that can be provisioned but not converged, and one that can be converged but is gated by nothing, are both states this discovery SHALL refuse rather than pass over: a stack whose host is converged by no job is indistinguishable from a stack that has nothing to converge.
 
+**A stack whose own committed declaration excludes it from the converge is not omitted in that sense**, and the difference SHALL be visible in every run rather than inferred from an absence. The workflow SHALL name each such stack as excluded by its own declaration before it emits the matrix, SHALL converge it in no row, and SHALL fail a run requested by hand that names it, saying that it is excluded rather than that it was not found. A run in which every discovered stack is excluded SHALL fail as discovery finding nothing does, because a converge that converges no host and reports success is the outcome this requirement exists to prevent. A stack excluded by its own declaration SHALL NOT be refused for the absence or invalidity of a field only its converge would consume — its declared Ansible group, that group's variables file or its read-only secret name — because switching a stack off SHALL NOT be harder than switching it on; the check that its inventory source and its pipeline declaration exist for each other SHALL still apply to it, being a property of the tree rather than of a converge.
+
 A converge job SHALL establish that the credentials it holds are usable — that the stack's secrets decrypt and that its inventory resolves — **before** any task acts on the host. Those inputs are decrypted at the moment they are first used, which is several roles into the play, so a run that starts with a wrong secret would otherwise leave a partially-converged host for a reason that had nothing to do with the host.
 
 A converge job SHALL install the toolchain and the external content the play needs before running it, from this repository's own pinned manifests, and SHALL run from the directory whose configuration governs the run. A continuous-integration runner carries neither, and a run that reaches a missing plugin or a missing external role fails inside a mechanism, reading as a broken mechanism rather than as an unprovisioned machine. Running from the wrong directory is worse than failing: the configuration that makes a rejected credential fail the run is not loaded, so the run continues and reports a rejected credential as a stack whose server does not exist.
@@ -860,7 +862,7 @@ One stack's converge failing SHALL NOT prevent another stack's from running and 
 
 #### Scenario: A merge to the host configuration converges without a workstation
 - **WHEN** a merge to the default branch changes the host-configuration directory
-- **THEN** each already-configured stack's host SHALL be converged by the workflow, and no step of that converge SHALL require a command run from an operator's machine
+- **THEN** each already-configured stack's host, other than one excluded by its own declaration, SHALL be converged by the workflow, and no step of that converge SHALL require a command run from an operator's machine
 
 #### Scenario: A host's first converge is the operator's
 - **WHEN** a host has not been converged before, so it is on no private network the workflow can reach it over and holds no credential the workflow can authenticate with
@@ -886,6 +888,26 @@ One stack's converge failing SHALL NOT prevent another stack's from running and 
 - **WHEN** a converge is requested by hand naming a stack discovery did not find
 - **THEN** the run SHALL fail naming the stacks that were found, rather than converging none and reporting success
 
+#### Scenario: A stack excluded by its own declaration is named and not converged
+- **WHEN** a stack's pipeline declaration states that its host is not converged
+- **THEN** the workflow SHALL name that stack as excluded by its own declaration, SHALL run no converge job for it, and SHALL converge every other discovered stack as before
+
+#### Scenario: An excluded stack is not refused for a field only its converge would consume
+- **WHEN** a stack's pipeline declaration excludes it from the converge and declares no Ansible group, or one whose variables file does not exist
+- **THEN** discovery SHALL accept the tree, name the stack as excluded, and converge every other stack, rather than refusing the stack for a field no converge of it will read
+
+#### Scenario: An excluded stack still needs its inventory source
+- **WHEN** a stack's pipeline declaration excludes it from the converge but no inventory source exists for that stack
+- **THEN** discovery SHALL fail naming that stack and the missing side, exactly as it does for a stack that is not excluded
+
+#### Scenario: A run requested for an excluded stack fails naming the exclusion
+- **WHEN** a converge is requested by hand naming a stack whose declaration excludes it from the converge
+- **THEN** the run SHALL fail saying that the stack is excluded by its own declaration, rather than converging nothing and reporting success, or reporting the stack as not found
+
+#### Scenario: Every stack excluded fails rather than reporting success
+- **WHEN** every stack discovery finds is excluded from the converge by its own declaration
+- **THEN** the workflow SHALL fail naming the excluded stacks, and SHALL NOT allow a dependent job to be skipped and reported as successful
+
 #### Scenario: A wrong secret stops the run before the host is touched
 - **WHEN** a converge job holds a credential that does not decrypt that stack's committed secrets, or a credential its inventory source rejects
 - **THEN** the run SHALL fail before the first role acts on the host, rather than partway through the play
@@ -903,15 +925,17 @@ One stack's converge failing SHALL NOT prevent another stack's from running and 
 - **THEN** every other stack's converge SHALL still run and report its own outcome
 
 ### Requirement: Each Stack Declares Its Own Pipeline Configuration
-Every directory under `terraform/stacks/` SHALL carry a committed, machine-readable file declaring the pipeline configuration for that stack. Three fields are **required**: the name of the GitHub Environment its apply job attaches to, the name of the repository secret holding its read-only Hetzner token, and the name of the Ansible group its host-configuration converge targets. Two are **optional**: whether the Destroy Policy Gate applies to it, which defaults to applying when absent (see the Destroy Policy Gate requirement, whose scenario "An environment declaring nothing is gated" is the case this default serves); and whether the shared platform stack is deployed to it, which defaults to **not** being deployed when absent.
+Every directory under `terraform/stacks/` SHALL carry a committed, machine-readable file declaring the pipeline configuration for that stack. Three fields are **required**: the name of the GitHub Environment its apply job attaches to, the name of the repository secret holding its read-only Hetzner token, and the name of the Ansible group its host-configuration converge targets. Three are **optional**: whether the Destroy Policy Gate applies to it, which defaults to applying when absent (see the Destroy Policy Gate requirement, whose scenario "An environment declaring nothing is gated" is the case this default serves); whether the shared platform stack is deployed to it, which defaults to **not** being deployed when absent; and whether the host-configuration workflow converges its host, which defaults to the host **being** converged when absent.
 
 **The declared Ansible group SHALL NOT be derived from the stack's name.** A stack is a *(tenant, environment)* pair and the group it converges is the environment alone, so the two are equal only where a repository has one tenant. Parsing one out of the other is a rule that holds on the names a repository happens to have and fails silently on the next one — as a group that does not exist, reported several steps after the run began. It is declared for the same reason the GitHub Environment's name is: the pipeline reads it rather than computing it.
 
 **Unlike the other two required fields, the declared Ansible group carries no uniqueness obligation**, and the difference is not an oversight. Two stacks naming one GitHub Environment share its write token and its protection rules; two naming one read-only secret share one credential. Two stacks naming one Ansible group share a set of host variables, which is what an environment-wide baseline across tenants *is*. Distinctness SHALL NOT be required of it.
 
-Each optional field SHALL name what happens when it is **true**, rather than its inverse — the value states whether the gate applies, or whether the platform stack is deployed, rather than whether the stack is disposable or excluded. A field whose polarity has to be inferred from its name is one a reader can invert without noticing, and inverting either of these silently removes a guard: the first, the strongest guard on an apply; the second, the guard against a stack receiving an application stack nobody decided to give it.
+Each optional field SHALL name what happens when it is **true**, rather than its inverse — the value states whether the gate applies, or whether the platform stack is deployed, or whether the host is converged, rather than whether the stack is disposable, excluded or dormant. A field whose polarity has to be inferred from its name is one a reader can invert without noticing, and inverting any of these silently removes a guard: the first, the strongest guard on an apply; the second, the guard against a stack receiving an application stack nobody decided to give it; the third, the guard against a host whose firewall, SSH configuration and operator accounts silently stop being applied.
 
-**Each optional field's default SHALL be the value that is safe when the field was forgotten**, and the two defaults are opposite values for that one reason. A stack whose declaration says nothing about the destroy-policy gate is gated, because the mistake to protect against is an ungated destructive apply. A stack whose declaration says nothing about the platform stack does not receive it, because a stack directory is committed before its GitHub Environment holds any platform secret, and the mistake to protect against is a deploy attempted under credentials that do not yet exist, to a host that may not yet authorise the key.
+**Each optional field's default SHALL be the value that is safe when the field was forgotten**, and the defaults differ for that one reason. A stack whose declaration says nothing about the destroy-policy gate is gated, because the mistake to protect against is an ungated destructive apply. A stack whose declaration says nothing about the platform stack does not receive it, because a stack directory is committed before its GitHub Environment holds any platform secret, and the mistake to protect against is a deploy attempted under credentials that do not yet exist, to a host that may not yet authorise the key. A stack whose declaration says nothing about the converge is converged, because the mistake to protect against is a host whose firewall, SSH configuration and operator accounts silently stop being applied — a host left out of the converge by a forgotten field drifts from its baseline with nothing reporting it.
+
+**Excluding a stack from the converge is a declaration about the pipeline, not about the host, and SHALL NOT be derived from the stack's Terraform configuration.** A stack whose server has been decommissioned has no host to converge, and the declaration is how it says so; reading the same fact out of a Terraform variable would couple the host-configuration workflow to the provisioning layer's file format, which no workflow in this repository reads. The two are independent facts and MAY disagree for an interval — a server re-enabled before its declaration is flipped back is converged by nothing until it is — and that interval is the operator's to close, in the same pull request that re-enables the server.
 
 **A stack declaring that the platform stack is deployed to it SHALL also authorise that deploy on the host**, by enumerating the platform application among the deploy-key authorisations in the **host vars file of the host that stack provisions** — see *A Host-Scoped Variable Lives in the Host's Own Vars File* (`openspec/specs/iac-host-configuration/spec.md`). It SHALL NOT be the `group_vars` file of the declared Ansible group, and the difference is not cosmetic: a group is an environment, an environment may hold two stacks, and an authorisation written there would answer both stacks' opt-ins with one entry while authorising one deploy key on two hosts. The two are separate facts about separate layers and SHALL NOT be derived one from the other — a host may authorise the key before the pipeline is pointed at it, and that interval is a deliberate state rather than an error. The implication holds in one direction only, and a declaration opting in without the corresponding authorisation SHALL fail the required status check on the pull request, naming both files. **Each stack's opt-in SHALL be answered by its own host's authorisation**, so two stacks sharing an environment carry two obligations rather than one between them. Left to the deploy, the same disagreement surfaces as an authentication failure after the tailnet join and after any approval, with a cause that has to be inferred.
 
@@ -950,6 +974,14 @@ A stack excluded by an optional field it declares is not a skipped stack in that
 #### Scenario: A declaration naming the write token's own name is refused
 - **WHEN** a stack declaration names as its read-only secret a name that every GitHub Environment defines for its Read & Write token
 - **THEN** the required status check SHALL fail, naming that stack, rather than leaving a gated job to resolve a write credential from a field that says read-only
+
+#### Scenario: A stack declaring nothing about the converge is converged
+- **WHEN** a stack's pipeline declaration does not state whether its host is converged
+- **THEN** the host-configuration workflow SHALL converge that stack's host, exactly as if the declaration had stated that it is
+
+#### Scenario: An unrecognised converge value is refused
+- **WHEN** a stack's pipeline declaration states a value for whether its host is converged that is neither true nor false
+- **THEN** host-configuration discovery SHALL fail naming that stack and the value, rather than reading the value as either answer
 
 #### Scenario: A stack missing its declaration fails the pipeline
 - **WHEN** a directory under `terraform/stacks/` has no pipeline declaration, or one lacking a field the running workflow requires
