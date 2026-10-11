@@ -1004,6 +1004,8 @@ The money is not the obstacle and should not be cited as one: a detached 10 GB v
 
 That change lets a stack declare `converges_host: false`, and deliberately declares it rather than deriving it from `server_enabled = false` in the stack's `terraform.tfvars`, because no workflow reads a `.tfvars` file (its `design.md`, Decision 2). The cost is an interval: a server re-enabled without flipping its declaration back is converged by nothing, and nothing reports it. A `.github/tests` check reading both committed files — a stack with `server_enabled = false` declares `converges_host: false`, and one with `server_enabled = true` (or absent) does not — would close it statically, within that suite's constraints: a static read of two committed files, no Terraform binary. Decide whether the check should also cover `deploys_platform`, which the same decommissioning flipped.
 
+The change's code review added two things this entry should weigh. `platform-deploy.yml` never reads `converges_host`, so `converges_host: false` paired with `deploys_platform: true` is rejected only by `test_the_platform_stack_deploys_per_stack`'s committed-stack assertion, and a deploy that got past it would fail late, against a host that is gone. And an excluded stack's required fields go unvalidated while it is excluded, by requirement, so if they rot, the pull request that re-enables it fails discovery for the whole tree; a static check of an excluded stack's declaration would surface that before re-enabling rather than during it.
+
 ## 60. say-production-is-no-longer-reviewer-gated
 
 **Not blocked; recorded by `let-a-stack-opt-out-of-the-converge`, which declined to fold it in.**

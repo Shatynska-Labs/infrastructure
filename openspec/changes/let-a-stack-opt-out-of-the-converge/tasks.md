@@ -32,6 +32,6 @@ No Molecule scenario is owed: no role changes. What changes is which stacks a wo
 ## 5. Verify and ship
 
 - [x] 5.1 Run the three verification commands above; all pass.
-- [ ] 5.2 Commit the implementation and have `ai-toolkit:change-code-reviewer` review the committed diff; apply fixes.
+- [x] 5.2 Commit the implementation and have `ai-toolkit:change-code-reviewer` review the committed diff; apply fixes.
 - [ ] 5.3 Open the pull request; after the operator confirms the merge, dispatch Host Converge with an empty `stack` input and confirm with the operator that only `converge (main-production)` ran and the log names `main-staging` as excluded.
 - [ ] 5.4 Archive the change on a freshly fetched trunk and open its record pull request.

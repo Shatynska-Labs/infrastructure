@@ -227,6 +227,9 @@ jobs:
             # The control-character refusal comes first, before the value is
             # branched on, so neither branch below echoes an unrepresentable
             # value -- the order platform-deploy.yml uses for `deploys_platform`.
+            # An unrecognised value is refused rather than read as either
+            # answer: a typo must be neither a silent opt-out nor a silent
+            # converge of a host the operator switched off.
             converges_host="$(field "$declaration" converges_host)"
             case "$converges_host" in
               *[[:cntrl:]]*)
@@ -234,11 +237,6 @@ jobs:
                 refused=1
                 continue
                 ;;
-            esac
-            # An unrecognised value is refused rather than read as either
-            # answer: a typo must be neither a silent opt-out nor a silent
-            # converge of a host the operator switched off.
-            case "$converges_host" in
               "" | true) ;;
               false)
                 excluded="${excluded}${name} "
@@ -366,11 +364,12 @@ jobs:
             done
           fi
 
-          # Named rather than silent. A stack left out of the matrix is
-          # otherwise visible only in its own absence, which is the one place
-          # nobody looks.
+          # Named rather than silent, and as an annotation so it shows on the
+          # run page rather than only inside this step's log. A stack left out
+          # of the matrix is otherwise visible only in its own absence, which
+          # is the one place nobody looks.
           if [ -n "$excluded" ]; then
-            echo "Excluded by their own declarations, and converged by nothing: ${excluded}"
+            echo "::notice::Excluded by their own declarations, and converged by nothing: ${excluded}"
           fi
 
           if [ ! -s "$records" ] && [ "$refused" -eq 0 ]; then
@@ -380,6 +379,7 @@ jobs:
               exit 1
             fi
             echo "::error::Discovery found no inventory source under ${inventory_root}/, so no stack has a host configuration to apply. Refusing to report success having discovered nothing."
+            rm -f "$records"
             exit 1
           fi
 
