@@ -65,3 +65,9 @@ deploy_apps:
   - name: commerce-ops
     public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIvqBXstDCjAlYAZ3i92iLanC+lDe44eNpS0UGa6N4jw commerce-ops-deploy"
     probe_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICLuWtZGYu9CftLs47b3shYACCr3N5WkHcuhJz/L4nN3 commerce-ops-probe-main-production"
+  # Static site for shatynskyj.in.ua (repo shatynska/forging_v1, image
+  # ghcr.io/shatynska/shatynskyj). It has no database; its probe key is
+  # declared anyway, as `platform`'s is, and can only answer `absent`.
+  - name: shatynskyj
+    public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPteAF57/mdzfFK30qqJT6soA+KG/CBMPbz514WHTryv shatynskyj-deploy-main-production"
+    probe_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFjklVlBIDgf8xghgY1AMCsqnFUyfLgTZsSeveRx1sPL shatynskyj-probe-main-production"
