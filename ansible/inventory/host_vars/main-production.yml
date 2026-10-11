@@ -71,3 +71,9 @@ deploy_apps:
   - name: shatynskyj
     public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPteAF57/mdzfFK30qqJT6soA+KG/CBMPbz514WHTryv shatynskyj-deploy-main-production"
     probe_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFjklVlBIDgf8xghgY1AMCsqnFUyfLgTZsSeveRx1sPL shatynskyj-probe-main-production"
+  # Next.js site for shatynska.com (repo Shatynska-Labs/portfolio, image
+  # ghcr.io/shatynska-labs/portfolio). It has no database; its probe key is
+  # declared anyway, as `platform`'s is, and can only answer `absent`.
+  - name: portfolio
+    public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBoi9+3d4IGvLUldRaDtmwMyHwPP+2voV2gmLk9Is3dz portfolio-deploy-main-production"
+    probe_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKc/yR61n11V+/y9LTEXRRmw3sBhwZh51s9GKUn+7/PM portfolio-probe-main-production"
