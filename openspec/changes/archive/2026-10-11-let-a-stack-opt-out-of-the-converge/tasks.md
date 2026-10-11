@@ -33,5 +33,7 @@ No Molecule scenario is owed: no role changes. What changes is which stacks a wo
 
 - [x] 5.1 Run the three verification commands above; all pass.
 - [x] 5.2 Commit the implementation and have `ai-toolkit:change-code-reviewer` review the committed diff; apply fixes.
-- [ ] 5.3 Open the pull request; after the operator confirms the merge, dispatch Host Converge with an empty `stack` input and confirm with the operator that only `converge (main-production)` ran and the log names `main-staging` as excluded.
-- [ ] 5.4 Archive the change on a freshly fetched trunk and open its record pull request.
+- [x] 5.3 Open the pull request; after the operator confirms the merge, dispatch Host Converge with an empty `stack` input and confirm with the operator that only `converge (main-production)` ran and the log names `main-staging` as excluded.
+
+      **Confirmed 2026-10-11.** Pull request #269 merged at 2026-10-11T20:30:13Z. Host Converge run 38172908092, dispatched with an empty `stack` input, emitted `##[notice]Excluded by their own declarations, and converged by nothing: main-staging`, discovered `main-production` alone, and concluded `success` with `converge (main-production)` as its only converge job. The operator confirmed the effect.
+- [x] 5.4 Archive the change on a freshly fetched trunk and open its record pull request.
