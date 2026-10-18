@@ -1,18 +1,18 @@
 ## 1. Keys
 
-- [ ] 1.1 Obtain the two public halves from the operator: `~/.ssh/shatynska-basis-api-main-production.pub` (comment `basis-api-deploy-main-production`) and `~/.ssh/shatynska-basis-api-probe-main-production.pub` (comment `basis-api-probe-main-production`), with their `ssh-keygen -lf` fingerprints.
+- [x] 1.1 Obtain the two public halves from the operator: `~/.ssh/shatynska-basis-api-main-production.pub` (comment `basis-api-deploy-main-production`) and `~/.ssh/shatynska-basis-api-probe-main-production.pub` (comment `basis-api-probe-main-production`), with their `ssh-keygen -lf` fingerprints. Deploy `SHA256:5Fa1AlbDvEujxc93OXrrdXIvpJ2INvR6YCVbZVrM0jE`, probe `SHA256:rmfPSo2axnkzkbNgwSoQFnoc5UNuUz5Q1bi9hxFzajk`.
 
 ## 2. Implement
 
-- [ ] 2.1 Add the `basis-api` entry to `deploy_apps` in `ansible/inventory/host_vars/main-production.yml`, after `portfolio`, with a comment naming the application, its repository (`Shatynska-Labs/basis`) and image (`ghcr.io/shatynska-labs/basis-api`), saying that it has no database yet and that its probe key is declared for the one it will take in the shared instance. Leave every existing entry and comment unchanged.
+- [x] 2.1 Add the `basis-api` entry to `deploy_apps` in `ansible/inventory/host_vars/main-production.yml`, after `portfolio`, with a comment naming the application, its repository (`Shatynska-Labs/basis`) and image (`ghcr.io/shatynska-labs/basis-api`), saying that it has no database yet and that its probe key is declared for the one it will take in the shared instance. Leave every existing entry and comment unchanged.
 
 ## 3. Verify
 
-- [ ] 3.1 Confirm by fingerprint that each committed key equals the operator-supplied fingerprint, that the two differ, and that neither equals any other key in the file.
-- [ ] 3.2 `openspec validate --all --strict` passes.
-- [ ] 3.3 `python3 -m unittest discover --start-directory .github/tests` passes from the repository root.
-- [ ] 3.4 `ansible-lint` and `ansible-playbook --syntax-check -e target_environment=syntax-check-only playbooks/host-baseline.yml` pass from `ansible/`.
-- [ ] 3.5 No Molecule scenario is owed: no role changes.
+- [x] 3.1 Confirm by fingerprint that each committed key equals the operator-supplied fingerprint, that the two differ, and that neither equals any other key in the file. Done: both match, and all ten keys in the file are distinct.
+- [x] 3.2 `openspec validate --all --strict` passes.
+- [x] 3.3 `python3 -m unittest discover --start-directory .github/tests` passes from the repository root — 1600 tests, OK.
+- [x] 3.4 `ansible-lint` and `ansible-playbook --syntax-check -e target_environment=syntax-check-only playbooks/host-baseline.yml` pass — the syntax check from `ansible/`, ansible-lint as the pinned `pre-commit` hook (v26.9.0) with `--all-files` from the repository root.
+- [x] 3.5 No Molecule scenario is owed: no role changes.
 
 ## 4. Ship
 
