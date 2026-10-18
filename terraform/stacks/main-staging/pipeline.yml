@@ -90,28 +90,25 @@ destroy_policy_gate: false
 # avoided in the analogous case of opening ports in front of a host with
 # nothing behind them.
 #
-# `false` SINCE let-a-stack-opt-out-of-the-converge, because this stack has no
-# server: `server_enabled = false` in this directory's terraform.tfvars, applied
-# on 2026-09-19 (`fix: disable the staging server`). A deploy row would aim at
-# a tailnet peer that no longer exists. `host_vars/main-staging.yml` keeps
-# authorising the `platform` key, which is the "authorised but not deployed to"
-# state described above and is permitted: the obligation to authorise runs
-# from `true` only.
-#
-# RE-ENABLING STAGING flips this and `converges_host` below back to `true` in
-# the same pull request that sets `server_enabled = true`. While it is `true`,
-# this stack's Environment requires no reviewer, so the deploy proceeds on
-# merge with no approval prompt -- see `github_environment` above.
-deploys_platform: false
+# DECOMMISSIONING STAGING flips this and `converges_host` below to `false` in
+# the same pull request that sets `server_enabled = false` in this directory's
+# terraform.tfvars, and re-enabling flips all three back together: a deploy
+# row aimed at a decommissioned server targets a tailnet peer that no longer
+# exists. It was `false` from 2026-09-19 (`fix: disable the staging server`)
+# until the server was re-enabled. While it is `true`, this stack's
+# Environment requires no reviewer, so the deploy proceeds on merge with no
+# approval prompt -- see `github_environment` above.
+deploys_platform: true
 
 # Whether the host-configuration workflow converges this stack's host.
 # OPTIONAL; absent means it IS. Read the production stack's declaration for the
 # polarity rule, why its default differs from `deploys_platform`'s, and why it
 # is declared rather than derived from `server_enabled`.
 #
-# `false` because the server was decommissioned on 2026-09-19 (see
-# `deploys_platform` above): its converge row failed at inventory resolution on
-# every merge touching `ansible/`, naming a group with no host. The converge
-# now names this stack as excluded and runs no row for it. Plan, apply and
-# drift still cover it -- they are what hold the decommissioned state in place.
-converges_host: false
+# Set to `false` whenever this stack's server is decommissioned (see
+# `deploys_platform` above): a converge row for a stack with no server fails
+# at inventory resolution on every merge touching `ansible/`, naming a group
+# with no host, where an excluded stack is named as excluded and runs no row.
+# Plan, apply and drift cover the stack either way -- while decommissioned,
+# they are what hold that state in place.
+converges_host: true

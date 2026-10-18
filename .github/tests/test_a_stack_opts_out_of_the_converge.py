@@ -59,7 +59,8 @@ Which assertions are red before the implementation
 - RED until the change lands: every test in which a fixture stack declares the
   converge field `false` or an unrecognised value (the committed discovery
   ignores the field), the committed-tree reads of `main-staging`'s declaration,
-  and `TestTheCommittedTreeConvergesProductionAndExcludesStaging`.
+  and `TestTheCommittedTreeConvergesEveryStack` (then named for excluding
+  staging, which the committed tree did until its server was re-enabled).
 - GREEN at authoring, by design, and stated so that the pass is not read as the
   "passed before any implementation existed" alarm:
   `test_an_excluded_stack_with_no_inventory_source_is_refused` (the cross-check
@@ -714,31 +715,35 @@ class TestTheCommittedDeclarationsStateTheConvergeAsDecided(unittest.TestCase):
             self.fail(f"terraform/stacks/{stack}/ carries no pipeline declaration")
         return declaration.mapping
 
-    def test_staging_declares_its_host_is_not_converged(self) -> None:
-        """DERIVED -- design.md Decision 5: "`converges_host: false` uses the new
-        field"."""
+    # Decision 5 set both of staging's fields `false` because its server was
+    # decommissioned. The server has since been re-enabled, which per that
+    # stack's own pipeline.yml flips both back in the same pull request, so
+    # these now assert the re-enabled values. Each stays declared rather than
+    # absent: the comment beside it says when it is flipped again.
+
+    def test_staging_declares_its_host_is_converged(self) -> None:
+        """DERIVED -- design.md Decision 5, reversed by re-enabling the
+        `main-staging` server."""
         value, offence = converge_value(self._mapping(STAGING_DIRECTORY))
         self.assertIsNone(offence, offence)
         self.assertIs(
-            False,
+            True,
             value,
-            f"{STAGING_DIRECTORY}'s declaration does not state `{CONVERGE_KEY}: false`, "
-            "so its decommissioned server keeps producing a red converge row on every "
-            f"merge touching `ansible/` (read {value!r})",
+            f"{STAGING_DIRECTORY}'s declaration does not state `{CONVERGE_KEY}: true`, "
+            "so its re-enabled server is converged by nothing and nothing reports it "
+            f"(read {value!r})",
         )
 
-    def test_staging_declares_no_platform_deploy(self) -> None:
-        """DERIVED -- design.md Decision 5: "`deploys_platform: false` uses the
-        existing one". Asserted as declared `false`, not merely absent, because the
-        decision is to flip the value with a comment saying why."""
+    def test_staging_declares_the_platform_deploy(self) -> None:
+        """DERIVED -- design.md Decision 5, reversed by re-enabling the
+        `main-staging` server."""
         value, offence = platform_opt_in(self._mapping(STAGING_DIRECTORY))
         self.assertIsNone(offence, offence)
         self.assertIs(
-            False,
+            True,
             value,
             f"{STAGING_DIRECTORY}'s declaration does not state the platform deploy as "
-            f"false (read {value!r}), so every merge touching `platform/` starts a "
-            "deploy row aimed at a host that no longer exists",
+            f"true (read {value!r}), so its re-enabled host receives no platform stack",
         )
 
     def test_production_keeps_the_converge_default(self) -> None:
@@ -790,12 +795,13 @@ class TestTheCommittedDeclarationsStateTheConvergeAsDecided(unittest.TestCase):
         )
 
 
-class TestTheCommittedTreeConvergesProductionAndExcludesStaging(
+class TestTheCommittedTreeConvergesEveryStack(
     ConvergeOptOutDiscoveryMixin, unittest.TestCase
 ):
-    """DERIVED -- design.md Migration Plan step 2: "The next merge touching
-    `ansible/` runs a converge with `main-production` only, and the run names
-    `main-staging` as excluded". Executes the workflow's own discovery body over
+    """DERIVED -- design.md Migration Plan step 2, which had the run converge
+    `main-production` only and name `main-staging` as excluded; since the
+    `main-staging` server was re-enabled, a merge converges both and excludes
+    neither. Executes the workflow's own discovery body over
     a COPY of the committed `terraform/stacks/` and `ansible/inventory/`, so the
     committed declarations and the committed body are exercised together and
     nothing is written into the working tree.
@@ -813,18 +819,18 @@ class TestTheCommittedTreeConvergesProductionAndExcludesStaging(
             shutil.copytree(ROOT / relative, scratch / relative, ignore=ignore)
         return scratch
 
-    def test_a_merge_converges_production_alone_and_names_staging_as_excluded(self) -> None:
+    def test_a_merge_converges_both_stacks_and_excludes_neither(self) -> None:
         tree = self._committed_copy()
         code, output, said = self._run(tree)
         self.assertEqual(
             0, code, f"discovery refused the committed tree: {said[-800:]!r}"
         )
         self.assertConverges(output, said, PROD_DIRECTORY)
-        self.assertNotConverged(output, STAGING_DIRECTORY)
-        self.assertTrue(
+        self.assertConverges(output, said, STAGING_DIRECTORY)
+        self.assertFalse(
             names_as_excluded(said, STAGING_DIRECTORY),
-            f"the run over the committed tree does not name {STAGING_DIRECTORY} as "
-            f"excluded: {said[-800:]!r}",
+            f"the run over the committed tree names {STAGING_DIRECTORY} as excluded: "
+            f"{said[-800:]!r}",
         )
 
 
