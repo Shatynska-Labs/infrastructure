@@ -77,3 +77,10 @@ deploy_apps:
   - name: portfolio
     public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBoi9+3d4IGvLUldRaDtmwMyHwPP+2voV2gmLk9Is3dz portfolio-deploy-main-production"
     probe_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKc/yR61n11V+/y9LTEXRRmw3sBhwZh51s9GKUn+7/PM portfolio-probe-main-production"
+  # NestJS API for api.basis.shatynska.com (repo Shatynska-Labs/basis, image
+  # ghcr.io/shatynska-labs/basis-api). It has no database yet; its probe key is
+  # declared for the `basis-api` database it will take in the shared instance,
+  # and until then can only answer `absent`.
+  - name: basis-api
+    public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINDKLdgm242zhB9wy9fDN0YBPR2sfG00VWPLzMZz5OeQ basis-api-deploy-main-production"
+    probe_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICpA58JRf6vLRLb4Pyzepe3FPqLE8U4sXBc6bsbB2KTe basis-api-probe-main-production"
