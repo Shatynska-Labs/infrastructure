@@ -21,5 +21,7 @@ No Molecule scenario is owed: no role changes. No Terraform module changes, so n
 
 - [x] 3.1 Run the three verification commands above; all pass.
 - [x] 3.2 Commit the implementation and have `ai-toolkit:change-code-reviewer` review the committed diff; apply fixes.
-- [ ] 3.3 Open the pull request; after the operator confirms the merge and the converge, hand the operator the cleanup block and read the host to confirm `/opt/commerce-ops`, both sudoers files and both `authorized_keys` lines are gone and `platform`'s are intact.
-- [ ] 3.4 Archive the change on a freshly fetched trunk, delete the `remove-commerce-ops-from-staging` entry from `docs/backlog.md` in the same commit, and open its record pull request.
+- [x] 3.3 Open the pull request; after the operator confirms the merge and the converge, hand the operator the cleanup block and read the host to confirm `/opt/commerce-ops`, both sudoers files and both `authorized_keys` lines are gone and `platform`'s are intact.
+
+      **Confirmed 2026-10-18.** Pull request #275 merged at 2026-10-18T17:35:36Z and its Host Converge run was started. The operator ran the cleanup block as root, and the pasted output showed `grep -c commerce-ops` on `/opt/platform/.ssh/authorized_keys` returning `0`, `grep -c .` returning `2`, and `/etc/sudoers.d` holding `app-deploy-platform` and `app-probe-platform` only. This session then read `/opt` as `ops-claude` and saw `containerd platform`. The first attempt, run as `ops-claude`, was refused for want of sudo; the root route is what worked.
+- [x] 3.4 Archive the change on a freshly fetched trunk, delete the `remove-commerce-ops-from-staging` entry from `docs/backlog.md` in the same commit, and open its record pull request.
