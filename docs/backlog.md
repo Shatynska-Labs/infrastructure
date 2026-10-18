@@ -58,7 +58,7 @@ Recorded 2026-09-13 by `onboard-commerce-ops-to-staging`, which added a `deploy_
 
 This is the same shape as `manage-root-authorized-keys-from-a-role`'s finding about `root`'s `authorized_keys`, and the same two things are true of it: `exclusive: true` is the only form that actually revokes and is the form that can lock everyone out, and the `ops_user` role's per-entry `state:` model — where revocation is `state: absent` with the entry **left in place** until a converge has removed it — is the shape to follow rather than invent. The two entries are worth taking together for that reason, though neither blocks the other.
 
-Not blocked. Nothing has needed revoking yet, which is why this is an entry rather than an incident.
+Not blocked. Nothing has needed revoking yet, which is why this is an entry rather than an incident. `remove-commerce-ops-from-staging` then needed it once and was done by hand on the host instead (its `design.md` Decision 1), which is a second use and still not a reason to build it for one host.
 
 ## 5. say-what-the-host-firewall-actually-gates
 

@@ -46,7 +46,6 @@ ssh shatynska-main-staging 'hostname; docker ps --format "{{.Names}}\t{{.Status}
 ssh shatynska-main-staging 'docker exec platform-prometheus-1 wget -qO- \
   "http://localhost:9090/api/v1/targets?state=active"' | \
   python3 -c 'import json,sys; [print(t["labels"]["job"], t["health"]) for t in json.load(sys.stdin)["data"]["activeTargets"]]'
-curl -sS -o /dev/null -w '%{http_code}\n' https://commerce-ops.main-staging.fincci.bike/health
 cd ansible && ansible-inventory -i inventory/main-staging.hcloud.yml --list | \
   python3 -c 'import json,sys; print(json.load(sys.stdin)["_meta"]["hostvars"]["main-staging"]["hcloud_ipv4"])'
 ssh shatynska-main-staging 'ls -l /dev/disk/by-id/ | grep HC_Volume'
@@ -56,10 +55,10 @@ ssh shatynska-main-staging 'ls -l /dev/disk/by-id/ | grep HC_Volume'
 
 **`terraform output` is not the way to read these**, and it is worth knowing before you reach for it: every stack declares an HCP Terraform backend, so `terraform output` needs `terraform init` first, and on a workstation whose HCP credential belongs to another organisation `init` fails with *organization "shatynska" at host app.terraform.io not found*. The inventory read above needs only the read-only Hetzner token. The volume id is on the host as `scsi-0HC_Volume_<id>`, and after the rebuild it is in the apply run's log or the Hetzner console.
 
-**Probe `/health`, not `/`, and know what a bare 404 does not prove.** This application answers **404** at `/` by design — it has no route there — so `/` reads like a failure and tells you nothing. Worse, **Traefik's own 404 is indistinguishable by status code**: a router that never matched, because DNS is stale or the certificate did not issue or the application's labels did not come back, answers 404 too. The discriminator is the `server:` header — the application answers `server: uvicorn`, Traefik answers its own. So probe a path the application really serves, and where you do read a 404, read the header with it:
+**Probe `/health`, not `/`, and know what a bare 404 does not prove.** An application may answer **404** at `/` by design — `commerce-ops` has no route there — so `/` reads like a failure and tells you nothing. Worse, **Traefik's own 404 is indistinguishable by status code**: a router that never matched, because DNS is stale or the certificate did not issue or the application's labels did not come back, answers 404 too. The discriminator is the `server:` header — a Python application answers `server: uvicorn`, Traefik answers its own. So probe a path the application really serves, and where you do read a 404, read the header with it. On a host with no application serving a public route, `platform`'s own Grafana and Prometheus checks below are the whole probe set and this paragraph is not owed. Where an application does serve one:
 
 ```sh
-curl -sS -D- -o /dev/null https://commerce-ops.main-staging.fincci.bike | grep -i '^server:'
+curl -sS -D- -o /dev/null https://<app>.<this host's name>.fincci.bike | grep -i '^server:'
 ```
 
 Record the container set and their health, the active scrape targets, the public IPv4, the volume id, the host's tailnet address, and every hostname that resolves to this server. `dig` may not be installed; `python3 -c 'import socket; print(socket.gethostbyname("<name>"))'` answers the same question.
@@ -248,7 +247,7 @@ gh secret set PLATFORM_DEPLOY_HOST --env main-staging
 
 That value is read twice by the platform deploy — as the SSH target and as Grafana's bind address — so **it must be a tailnet address and never a public one**, or that stack's Grafana is published on the public interface.
 
-Then the same address as `DEPLOY_HOST` in each application's own repository, one per deploy target. For `commerce-ops` that is its `staging` Environment. Phase 15 fails at connection time if this is missed, in a way that reads like a network problem.
+Then the same address as `DEPLOY_HOST` in each application's own repository, one per deploy target on this host — read the applications from this host's `deploy_apps`, and skip `platform`, whose address phase 9 already set. `main-staging` has no other application, so it owes nothing here. Phase 15 fails at connection time if this is missed, in a way that reads like a network problem.
 
 **Third, your own `~/.ssh/config`.** The `ssh shatynska-main-staging` alias that phases 1, 10 and 16 use is a workstation-local convenience declared in no committed file. If its `HostName` pins the old address, those phases fail with a connection error that reads as the host being down. Update it, or drop the alias and use the tailnet name.
 
@@ -334,13 +333,13 @@ Use the provisioning recipe in `docs/onboard-an-application.md`, which is where 
 - **`rotate=yes` is required**, not optional. The secret still exists in that target's Environment while the role does not, so the block refuses with `rotate=no` — correctly, since that guard exists to stop an accidental rotation.
 - **It is pasted on your workstation, not on the host.** It calls `gh` and then reaches the host over `ssh` itself; pasted into a session on the host it aborts at the first `gh` and changes nothing.
 
-On `main-staging` there is exactly one such application, `commerce-ops`. The `platform` entry beside it in `deploy_apps` holds no database and never should — do not run the recipe for it.
+Read which applications hold a database from this host's `deploy_apps`. `main-staging` has none: `platform` is its only entry, holds no database and never should — do not run the recipe for it, and this phase is empty there. `main-production` carries `commerce-ops`.
 
 ## 15. Deploy each application from its own repository
 
 **Credential:** held in that application's own repository, one set per deploy target — nothing in this repository can reach them.
 
-Nothing here can trigger these. For each application on this host, go to that application's own Actions. **How you start it is that application's business and may not be a button**: `commerce-ops`'s `Deploy` workflow triggers on `push` to `main` and declares no `workflow_dispatch`, so there is no Run workflow to click and looking for one wastes time.
+Nothing here can trigger these. For each application on this host other than `platform` (`main-staging` has none), go to that application's own Actions. **How you start it is that application's business and may not be a button**: `commerce-ops`'s `Deploy` workflow triggers on `push` to `main` and declares no `workflow_dispatch`, so there is no Run workflow to click and looking for one wastes time.
 
 **Re-running the last `Deploy` run is the route that belongs in a rebuild** — it redeploys the commit already on `main`, where pushing would mean inventing a commit to trigger a deploy:
 
@@ -362,7 +361,7 @@ If a deploy fails at connection time, phase 9's `DEPLOY_HOST` is the first thing
 Against what phase 1 recorded, not against what looks reasonable:
 
 ```sh
-curl -sS -o /dev/null -w '%{http_code}\n' https://commerce-ops.main-staging.fincci.bike/health
+# for each application with a public route, the probe phase 1 recorded
 ssh shatynska-main-staging 'docker ps --format "{{.Names}}\t{{.Status}}"'
 ```
 
