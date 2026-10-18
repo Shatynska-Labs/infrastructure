@@ -46,3 +46,10 @@ deploy_apps:
   - name: platform
     public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPMCOPPlcE5sXqy1//8Cl8S3fac51+ceyD9YBnN4Vwq+ deploy@platform-staging"
     probe_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL38ZTtPYBRjKPMOkqHZHtVilyrAYpQXQhfp3bT2b6Rv probe@platform-main-staging"
+  # NestJS API for basis-api.main-staging.<BASE_DOMAIN> (repo
+  # Shatynska-Labs/basis, image ghcr.io/shatynska-labs/basis-api). It has no
+  # database yet; its probe key is declared for the `basis-api` database it
+  # will take in the shared instance, and until then can only answer `absent`.
+  - name: basis-api
+    public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIIYlafOmIjXbvg5NxI/61fgIhSfe3aNWq6zO7o8Mdq00 basis-api-deploy-main-staging"
+    probe_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINbRxYpNCm4wnZOYq0vGsW77/84wnnN5APQx8zcwixoR basis-api-probe-main-staging"

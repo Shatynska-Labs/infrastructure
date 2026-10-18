@@ -4,15 +4,15 @@
 
 ## 2. Implement
 
-- [ ] 2.1 Add the `basis-api` entry to `deploy_apps` in `ansible/inventory/host_vars/main-staging.yml`, after `platform`, with a comment naming the application, its repository (`Shatynska-Labs/basis`) and image (`ghcr.io/shatynska-labs/basis-api`), saying that it has no database yet and that its probe key is declared for the one it will take. Leave every existing entry and comment unchanged.
+- [x] 2.1 Add the `basis-api` entry to `deploy_apps` in `ansible/inventory/host_vars/main-staging.yml`, after `platform`, with a comment naming the application, its repository (`Shatynska-Labs/basis`) and image (`ghcr.io/shatynska-labs/basis-api`), saying that it has no database yet and that its probe key is declared for the one it will take. Leave every existing entry and comment unchanged.
 
 ## 3. Verify
 
-- [ ] 3.1 Confirm by fingerprint that each committed key equals the fingerprint in 1.1, that the two differ, and that neither equals any other key in the file or in `main-production.yml`.
-- [ ] 3.2 `openspec validate --all --strict` passes.
-- [ ] 3.3 `python3 -m unittest discover --start-directory .github/tests` passes from the repository root.
-- [ ] 3.4 `ansible-lint` and `ansible-playbook --syntax-check -e target_environment=syntax-check-only playbooks/host-baseline.yml` pass.
-- [ ] 3.5 No Molecule scenario is owed: no role changes.
+- [x] 3.1 Confirm by fingerprint that each committed key equals the fingerprint in 1.1, that the two differ, and that neither equals any other key in the file or in `main-production.yml`.
+- [x] 3.2 `openspec validate --all --strict` passes.
+- [x] 3.3 `python3 -m unittest discover --start-directory .github/tests` passes from the repository root.
+- [x] 3.4 `ansible-lint` and `ansible-playbook --syntax-check -e target_environment=syntax-check-only playbooks/host-baseline.yml` pass.
+- [x] 3.5 No Molecule scenario is owed: no role changes.
 
 ## 4. Ship
 
