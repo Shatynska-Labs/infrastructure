@@ -8,14 +8,14 @@ No Molecule scenario is owed: no role changes. No Terraform module changes, so n
 
 ## 1. Plan
 
-- [ ] 1.1 Plan review by `ai-toolkit:change-plan-reviewer` reaches a verdict that permits proceeding, and any conditions are applied.
-- [ ] 1.2 Commit the approved plan.
+- [x] 1.1 Plan review by `ai-toolkit:change-plan-reviewer` reaches a verdict that permits proceeding, and any conditions are applied.
+- [x] 1.2 Commit the approved plan.
 
 ## 2. Repository
 
-- [ ] 2.1 Delete the `commerce-ops` entry from `ansible/inventory/host_vars/main-staging.yml`, and rewrite the comments in that file that describe it.
-- [ ] 2.2 Rewrite `docs/runbook-rebuild.md` phases 1, 9, 14, 15 and 16 so they do not assume `commerce-ops` is staging's application, keeping the production warning that names `commerce-ops`'s own PostgreSQL before the destroy step, and update the staging references in `docs/onboard-an-application.md`; historical sentences stay.
-- [ ] 2.3 Add to `docs/backlog.md`'s `revoke-an-application-s-deploy-authorisation` that it was worked around by hand once.
+- [x] 2.1 Delete the `commerce-ops` entry from `ansible/inventory/host_vars/main-staging.yml`, and rewrite the comments in that file that describe it.
+- [x] 2.2 Rewrite `docs/runbook-rebuild.md` phases 1, 9, 14, 15 and 16 so they do not assume `commerce-ops` is staging's application, keeping the production warning that names `commerce-ops`'s own PostgreSQL before the destroy step, and update the staging references in `docs/onboard-an-application.md`; historical sentences stay.
+- [x] 2.3 Add to `docs/backlog.md`'s `revoke-an-application-s-deploy-authorisation` that it was worked around by hand once.
 
 ## 3. Verify and ship
 
