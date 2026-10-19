@@ -331,13 +331,13 @@ Use the provisioning recipe in `docs/onboard-an-application.md`, which is where 
 - **`rotate=yes` is required**, not optional. The secret still exists in that target's Environment while the role does not, so the block refuses with `rotate=no` — correctly, since that guard exists to stop an accidental rotation.
 - **It is pasted on your workstation, not on the host.** It calls `gh` and then reaches the host over `ssh` itself; pasted into a session on the host it aborts at the first `gh` and changes nothing.
 
-Read which applications hold a database from this host's `deploy_apps`. `main-staging` has none: `platform` is its only entry, holds no database and never should — do not run the recipe for it, and this phase is empty there.
+Read which applications hold a database from this host's `deploy_apps`. `platform` holds none and never should: do not run the recipe for it. Where no other entry holds one, this phase is empty.
 
 ## 15. Deploy each application from its own repository
 
 **Credential:** held in that application's own repository, one set per deploy target — nothing in this repository can reach them.
 
-Nothing here can trigger these. For each application on this host other than `platform` (`main-staging` has none), go to that application's own Actions. **How you start it is that application's business and may not be a button**: a `Deploy` workflow that triggers on `push` to `main` and declares no `workflow_dispatch` has no Run workflow to click, and looking for one wastes time.
+Nothing here can trigger these. For each application on this host other than `platform`, go to that application's own Actions. **How you start it is that application's business and may not be a button**: a `Deploy` workflow that triggers on `push` to `main` and declares no `workflow_dispatch` has no Run workflow to click, and looking for one wastes time.
 
 **Re-running the last `Deploy` run is the route that belongs in a rebuild** — it redeploys the commit already on `main`, where pushing would mean inventing a commit to trigger a deploy:
 
