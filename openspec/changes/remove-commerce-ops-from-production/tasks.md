@@ -23,6 +23,6 @@ No Molecule scenario is owed: no role changes. No Terraform module changes, so n
 ## 3. Verify and ship
 
 - [x] 3.1 Run the three verification commands above; all pass.
-- [ ] 3.2 Commit the implementation and have `ai-toolkit:change-code-reviewer` review the committed diff; apply fixes.
+- [x] 3.2 Commit the implementation and have `ai-toolkit:change-code-reviewer` review the committed diff; apply fixes.
 - [ ] 3.3 Open the pull request. After the operator confirms the merge and its converge, hand the operator the read in design.md Decision 2, and stop if `/opt/commerce-ops` holds anything else; otherwise hand them the clean-up block, and confirm from the pasted output and a read of `/opt` that `/opt/commerce-ops`, both sudoers files and both `authorized_keys` lines are gone and every other application's are intact.
 - [ ] 3.4 Archive the change on a freshly fetched trunk, delete the `remove-commerce-ops-from-production` entry from `docs/backlog.md` in the same commit, and open its record pull request.
