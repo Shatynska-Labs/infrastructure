@@ -200,7 +200,7 @@ Where data is placed in such a store and meets none of those reasons, a logical 
 
 This fallback reaches every store on this host **except** the shared PostgreSQL instance, which admits no durable data at all under *Single Shared PostgreSQL Instance, Per-Application Databases* (`openspec/specs/iac-platform-services/spec.md`) — a prohibition no backup lifts, because that instance's classification above depends on it holding unconditionally.
 
-The platform stack's stores **as this change leaves them**, and the reason each satisfies this requirement. The census was re-read from both hosts on 2026-09-16 with `docker volume ls` and each container's mounts rather than from the stack definition — that reading is what the four unchanged rows rest on, and the shared instance's row names the location this change moves it to rather than the one that reading found. One further store, an application's own, does not satisfy it and is named below rather than omitted:
+The platform stack's stores **as this change leaves them**, and the reason each satisfies this requirement. The census was re-read from both hosts on 2026-09-16 with `docker volume ls` and each container's mounts rather than from the stack definition — that reading is what the four unchanged rows rest on, and the shared instance's row names the location this change moves it to rather than the one that reading found:
 
 | Store | Reason |
 |---|---|
@@ -213,10 +213,6 @@ The platform stack's stores **as this change leaves them**, and the reason each 
 **Three of those five stores sit on the attached data volume and two on the root disk, and the split is not a durability ranking.** It follows from what each store costs to keep: Prometheus's database and the shared instance both grow with what the host does, and Grafana's sits there for the reason the change that moved it recorded, while what stays on the root disk — Traefik's ACME storage and Alertmanager's state — is small and re-issued or re-created. The consequence worth stating, because nothing else here would say it, is that the server's automatic backups reach the root disk alone — so a store on the volume is outside the only copy of anything this host takes. That is not a gap in this requirement: a store classified above needs no backup, and a store needing one owes the logical backup and rehearsed restore this requirement already demands, wherever it sits. It is stated so that the snapshot is not read as a safety net under a store it does not reach.
 
 That table is the classification on one date and will age; the obligation above is what does not. A store added later SHALL state which of the reasons above it satisfies, in the artifacts of the change that adds it — or, where the store is added outside this repository, in the change here that records it. That is where the second scenario below finds a reason to test, and it costs no delta to this table. Such a store is in scope whether or not the table names it, and a store already named is in breach the moment its stated reason stops being true — a retention flag removed from Prometheus, the provisioning stanza that reproduces Grafana's dashboards deleted from `platform/docker-compose.yml` — whether or not any new data landed.
-
-**One divergence is stated rather than hidden, as of 2026-09-08.** The `commerce-ops` application keeps durable data in a PostgreSQL container of its own on this host, which is what *Single Shared PostgreSQL Instance, Per-Application Databases* forbids and what this requirement is not satisfied by. Its resolution — that application's durable data moves to an external managed service — is work in that application's own repository, over which this repository has no authority. Until it lands, this host holds data no backup covers, and this requirement SHALL be read as unmet in that one respect rather than as describing the host accurately. This divergence SHALL NOT be read to permit another application to do the same.
-
-Resolving it takes two steps, and no change in this repository would otherwise prompt the second: the migration, in that application's own repository, and the deletion of this paragraph. Until both are done the divergence stands as written.
 
 **Grafana state created outside this repository is non-durable.** Dashboards saved or edited through Grafana's own interface, and the users, preferences and annotations its internal database holds, SHALL be treated as data whose loss is tolerable **to the operator**, who is the only party that creates it, because committing a dashboard to the platform stack's definition is the mechanism by which a dashboard worth keeping is kept. The stack permits such edits — its dashboard provider sets `allowUiUpdates` true and `disableDeletion` false — so this is a standing property of that store rather than a hypothetical, and it is stated here rather than in the table above because the table is dated and this policy is not.
 
@@ -240,8 +236,8 @@ Durable application data is expected to live in an external managed service that
 - **THEN** it SHALL be directed to an external managed service that owns its own backups, unless the backup and the rehearsed restore above are already in place
 
 #### Scenario: The stated divergence is not a precedent
-- **WHEN** an application proposes keeping durable data on this host on the grounds that `commerce-ops` already does
-- **THEN** that SHALL NOT be treated as permission, because the divergence is recorded as unmet rather than as allowed
+- **WHEN** an application proposes keeping durable data on this host on the grounds that another application does or once did, or that this requirement states a divergence
+- **THEN** that SHALL NOT be treated as permission, because a divergence is recorded as unmet rather than as allowed, and a store is admitted only by one of the reasons above or by the backup and rehearsed restore above
 
 #### Scenario: A classified store moves between the host's disks
 - **WHEN** a store named in the table above is relocated between the host's root disk and the attached data volume
