@@ -472,38 +472,6 @@ A design must answer: where the password is generated and how it reaches the app
 
 **Re-checked**: 2026-10-19.
 
-## `classify-commerce-ops-production-data-for-the-shared-instance`
-
-On 2026-09-14 the operator decided that production `commerce-ops` data moves into production's shared PostgreSQL instance and is classified as tolerable to lose, with no backup, until it moves to Supabase (a temporary decision for an early-stage application). *Single Shared PostgreSQL Instance, Per-Application Databases* (`openspec/specs/iac-platform-services/spec.md`) still keeps durable data out of the shared instance unconditionally, so the specification does not record it. The cutover this was meant to gate already happened on 2026-09-16, ahead of this change (`commerce-ops`'s archived `move-production-into-the-shared-instance`, operator's decision to proceed), so the change now records an existing state rather than gating one.
-
-The change owes a MODIFIED delta on that requirement, shaped like its staging rehearsal-data policy: whose loss is tolerable, which application and host, and that it ends with the move to Supabase. It also owes a delta on *No Store on This Host Holds Data Requiring Backup* (`openspec/specs/iac-safety-hardening/spec.md`). `platform/README.md`'s major-upgrade section still says production's database "stands empty, reserved for a cutover", which is now false; `docs/runbook-rebuild.md` carries no warning that a rebuild deletes that data for good. Must not undo: the classification names one application on one host and is no permission for any other application's durable data.
-
-**Kind**: `change`. It owes MODIFIED deltas on *Single Shared PostgreSQL Instance, Per-Application Databases* and *No Store on This Host Holds Data Requiring Backup*.
-
-**Waits on**: the operator confirming that `commerce-ops` production still runs on this repository's `main-production` (it is in `ansible/inventory/host_vars/main-production.yml`'s `deploy_apps`, while `commerce-ops`'s own `docs/environments.md` speaks of "two company servers").
-
-**Design with**: `move-commerce-ops-durable-data-to-supabase`, whose remaining step (deleting the divergence paragraph) edits the same requirement and can land in this change.
-
-**Recorded by**: the operator's 2026-09-14 decision, taken after `provision-commerce-ops-database-in-the-shared-instance` had merged, so that change could not carry it.
-
-**Re-checked**: 2026-10-19.
-
-## `move-commerce-ops-durable-data-to-supabase`
-
-*No Store on This Host Holds Data Requiring Backup* (`openspec/specs/iac-safety-hardening/spec.md`) still states a divergence ("as of 2026-09-08"): `commerce-ops` keeping durable data in a PostgreSQL container of its own on production. `docs/runbook-rebuild.md` ("On `main-production` there is a third") and `platform/README.md` (`commerce-ops-postgres-1` "is not this instance") repeat it. Per `commerce-ops`'s archived `move-production-into-the-shared-instance`, on 2026-09-16 its whole database (including the `procrastinate_*` queue, which must share the domain transaction's database) moved into production's shared instance, and the private container and `commerce-ops_commerce_ops_pgdata` volume were removed. That meets this entry's own gate for deleting the paragraph, provided it is read on the host (`docker ps --filter name=commerce-ops` shows no PostgreSQL container, `docker volume ls` no such volume), not taken from a report.
-
-What remains here: delete or rewrite that paragraph and the two document passages, best done with `classify-commerce-ops-production-data-for-the-shared-instance`. Later, the move to Supabase itself, in the `commerce-ops` repository. For that move: use the session pooler `aws-1-eu-west-1.pooler.supabase.com:5432` with user `postgres.<ref>` (answered `pg_isready` from staging's `platform_edge` on 2026-09-14). The direct connection is IPv6-only and `platform_edge` has IPv6 disabled, the transaction pooler (6543) cannot carry the worker's `LISTEN/NOTIFY`, and the Free plan has no backups.
-
-**Kind**: `change`. It owes a MODIFIED delta on *No Store on This Host Holds Data Requiring Backup* removing the divergence. The Supabase move itself is the `commerce-ops` repository's work.
-
-**Waits on**: a read on `main-production` confirming no `commerce-ops` PostgreSQL container or volume, for the divergence deletion. The Supabase move waits on the `commerce-ops` repository.
-
-**Design with**: `classify-commerce-ops-production-data-for-the-shared-instance`.
-
-**Recorded by**: unknown (dated 2026-09-08). Recorded because the specification names the divergence and nothing else tracked it; the migration was the `commerce-ops` repository's work, outside this one's authority.
-
-**Re-checked**: 2026-10-19.
-
 ## `exercise-the-volume-server-coupling-against-live-state`
 
 `terraform/stacks/main-production/main.tf` couples the volume to the server (`count = var.volume_enabled && var.server_enabled ? 1 : 0`). *Conditional Prod Volume Creation* (`openspec/specs/iac-data-volumes/spec.md`) states two scenarios, *Volume toggle disabled creates nothing* and *Disabling the server also removes the volume*, that nothing has run against production's live state. The module tests under `terraform/modules/volume/tests/` cannot reach a stack's `count`.
@@ -903,7 +871,7 @@ What remains is a repeatable check. These are GitHub Environment secrets, invisi
 
 Each stack couples its data volume to its server (`count = var.volume_enabled && var.server_enabled ? 1 : 0`), so `server_enabled = false` discards the volume, which has no Hetzner backup; the server's backups reach the root disk only. `add-prod-data-volume`'s design accepted this deliberately. The 2026-09-16 rehearsal showed the apply destroys the volume **first**, before the server. Decoupling would give the volume its own `location` and gate it on `volume_enabled` alone; the cost is not money (tens of cents a month) but the toggle's meaning (`terraform/stacks/main-staging/variables.tf`: `server_enabled` is "the way to stop paying for staging without deleting its configuration").
 
-It is not worth doing while *No Store on This Host Holds Data Requiring Backup* (`openspec/specs/iac-safety-hardening/spec.md`) holds: nothing on the volume is durable. **Must not undo**: when durable data lands on a host, decoupling and a real backup are owed together; decoupling alone looks like protection while protecting against nothing. The divergence that requirement records, `commerce-ops`'s own unbacked PostgreSQL on production, is the first candidate to make the trigger real.
+It is not worth doing while *No Store on This Host Holds Data Requiring Backup* (`openspec/specs/iac-safety-hardening/spec.md`) holds: nothing on the volume is durable. **Must not undo**: when durable data lands on a host, decoupling and a real backup are owed together; decoupling alone looks like protection while protecting against nothing.
 
 **Kind**: `change`. It owes an `iac-safety-hardening`/stack delta and the operator's decision on the toggle's meaning, delivered with a backup.
 
@@ -988,5 +956,21 @@ The `.github/tests` suite has no shared test arrangement: several modules import
 **Design with**: `hold-the-whole-static-suite-to-its-own-constraints`, which also changes how that suite's modules read the tree.
 
 **Recorded by**: `sync-ai-toolkit-workflow-v10`, which recorded the shared test arrangement as none when taking ai-toolkit's development-workflow v10; creating one is not a sync.
+
+**Re-checked**: 2026-10-19.
+
+## `remove-commerce-ops-from-production`
+
+`commerce-ops` belongs to the fuperia company and no longer runs on this repository's hosts (operator, 2026-10-19). `main-production` still carries it: its `deploy_apps` entry in `ansible/inventory/host_vars/main-production.yml` (so `/opt/commerce-ops`, its deploy and probe sudoers files and two `authorized_keys` lines), its database and role in the shared PostgreSQL instance, and the passages that describe it: the divergence paragraphs in *No Store on This Host Holds Data Requiring Backup* (`iac-safety-hardening`) and *Single Shared PostgreSQL Instance, Per-Application Databases* (`iac-platform-services`), `docs/runbook-rebuild.md`'s production warning, `platform/README.md` and `docs/onboard-an-application.md`. Take `remove-commerce-ops-from-staging` (archived 2026-10-18) as the shape: delete the entry, clean the host by hand once, rewrite the documents.
+
+**It must not** drop the database before the operator confirms its data is not needed or has been copied out, and must not remove what `fuperia-it/commerce-ops` still deploys to before its own deploy stops targeting this host.
+
+**Kind**: `change`. It owes MODIFIED deltas removing the two specification passages, and the operator's decision on the database's data.
+
+**Waits on**: the operator's word that `commerce-ops`'s production data on this host is not needed or has been copied, and that `fuperia-it/commerce-ops` no longer deploys here.
+
+**Design with**: `revoke-an-application-s-deploy-authorisation`, the mechanism that would make the host clean-up a converge rather than a hand edit.
+
+**Recorded by**: `remove-obsolete-commerce-ops-entries`, which deleted `classify-commerce-ops-production-data-for-the-shared-instance` and `move-commerce-ops-durable-data-to-supabase` once the operator said `commerce-ops` will not be used here; removing it is a change, not a backlog edit.
 
 **Re-checked**: 2026-10-19.
