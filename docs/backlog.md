@@ -958,19 +958,3 @@ The `.github/tests` suite has no shared test arrangement: several modules import
 **Recorded by**: `sync-ai-toolkit-workflow-v10`, which recorded the shared test arrangement as none when taking ai-toolkit's development-workflow v10; creating one is not a sync.
 
 **Re-checked**: 2026-10-19.
-
-## `remove-commerce-ops-from-production`
-
-`commerce-ops` belongs to the fuperia company and no longer runs on this repository's hosts (operator, 2026-10-19). `main-production` still carries it: its `deploy_apps` entry in `ansible/inventory/host_vars/main-production.yml` (so `/opt/commerce-ops`, its deploy and probe sudoers files and two `authorized_keys` lines), its database and role in the shared PostgreSQL instance, and the passages that describe it: the divergence paragraphs in *No Store on This Host Holds Data Requiring Backup* (`iac-safety-hardening`) and *Single Shared PostgreSQL Instance, Per-Application Databases* (`iac-platform-services`), `docs/runbook-rebuild.md`'s production warning, `platform/README.md` and `docs/onboard-an-application.md`. Take `remove-commerce-ops-from-staging` (archived 2026-10-18) as the shape: delete the entry, clean the host by hand once, rewrite the documents.
-
-**It must not** drop the database before the operator confirms its data is not needed or has been copied out, and must not remove what `fuperia-it/commerce-ops` still deploys to before its own deploy stops targeting this host.
-
-**Kind**: `change`. It owes MODIFIED deltas removing the two specification passages, and the operator's decision on the database's data.
-
-**Waits on**: the operator's word that `commerce-ops`'s production data on this host is not needed or has been copied, and that `fuperia-it/commerce-ops` no longer deploys here.
-
-**Design with**: `revoke-an-application-s-deploy-authorisation`, the mechanism that would make the host clean-up a converge rather than a hand edit.
-
-**Recorded by**: `remove-obsolete-commerce-ops-entries`, which deleted `classify-commerce-ops-production-data-for-the-shared-instance` and `move-commerce-ops-durable-data-to-supabase` once the operator said `commerce-ops` will not be used here; removing it is a change, not a backlog edit.
-
-**Re-checked**: 2026-10-19.
