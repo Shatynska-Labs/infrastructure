@@ -22,8 +22,6 @@ Do this before anything else. Everything below it is recoverable; the contents o
 
 **Two stores come back empty and nothing says so at the time.** Prometheus's time-series database is gone, so every metric older than the rebuild is gone with it — the dashboards render, they are simply empty to the left of today. Grafana's UI-created state is gone too: dashboards saved or edited through Grafana's own interface, its users, its preferences and its annotations. What comes back is what this repository provisions, which is the datasource and the committed dashboards. If there is a dashboard on that host somebody built by hand and wants, **export it now**; after the next phase it is not recoverable from anywhere.
 
-**On `main-production` there is a third, and it is not this repository's to fix.** The `commerce-ops` application keeps durable data in a PostgreSQL container of its own on that host, which nothing backs up, and the requirement above records that host as unmet in that one respect rather than describing it accurately. A rebuild of `main-production` loses that data outright. `docs/backlog.md` `move-commerce-ops-durable-data-to-supabase` is what closes it. Until it does, **a production rebuild is not a routine act** and this sentence is the warning.
-
 **Two alarms will fire, both are expected, and neither is muted.** Say so wherever your alerts are read before you start, because the whole design of this system is that a check going quiet is as loud as one that fails:
 
 - `main-staging-alertmanager` is the host's dead-man's-switch. It is fed by Alertmanager's Watchdog every two minutes, so it goes overdue within minutes of the server being destroyed and pages `#alerts` continuously until the platform stack is running again on the rebuilt host — tens of minutes, not minutes. This is the alarm for when everything is down, and during a rebuild everything is in fact down.
@@ -55,7 +53,7 @@ ssh shatynska-main-staging 'ls -l /dev/disk/by-id/ | grep HC_Volume'
 
 **`terraform output` is not the way to read these**, and it is worth knowing before you reach for it: every stack declares an HCP Terraform backend, so `terraform output` needs `terraform init` first, and on a workstation whose HCP credential belongs to another organisation `init` fails with *organization "shatynska" at host app.terraform.io not found*. The inventory read above needs only the read-only Hetzner token. The volume id is on the host as `scsi-0HC_Volume_<id>`, and after the rebuild it is in the apply run's log or the Hetzner console.
 
-**Probe `/health`, not `/`, and know what a bare 404 does not prove.** An application may answer **404** at `/` by design — `commerce-ops` has no route there — so `/` reads like a failure and tells you nothing. Worse, **Traefik's own 404 is indistinguishable by status code**: a router that never matched, because DNS is stale or the certificate did not issue or the application's labels did not come back, answers 404 too. The discriminator is the `server:` header — a Python application answers `server: uvicorn`, Traefik answers its own. So probe a path the application really serves, and where you do read a 404, read the header with it. On a host with no application serving a public route, `platform`'s own Grafana and Prometheus checks below are the whole probe set and this paragraph is not owed. Where an application does serve one:
+**Probe `/health`, not `/`, and know what a bare 404 does not prove.** An application may answer **404** at `/` by design, because it has no route there, so `/` reads like a failure and tells you nothing. Worse, **Traefik's own 404 is indistinguishable by status code**: a router that never matched, because DNS is stale or the certificate did not issue or the application's labels did not come back, answers 404 too. The discriminator is the `server:` header — a Python application answers `server: uvicorn`, Traefik answers its own. So probe a path the application really serves, and where you do read a 404, read the header with it. On a host with no application serving a public route, `platform`'s own Grafana and Prometheus checks below are the whole probe set and this paragraph is not owed. Where an application does serve one:
 
 ```sh
 curl -sS -D- -o /dev/null https://<app>.<this host's name>.fincci.bike | grep -i '^server:'
@@ -333,13 +331,13 @@ Use the provisioning recipe in `docs/onboard-an-application.md`, which is where 
 - **`rotate=yes` is required**, not optional. The secret still exists in that target's Environment while the role does not, so the block refuses with `rotate=no` — correctly, since that guard exists to stop an accidental rotation.
 - **It is pasted on your workstation, not on the host.** It calls `gh` and then reaches the host over `ssh` itself; pasted into a session on the host it aborts at the first `gh` and changes nothing.
 
-Read which applications hold a database from this host's `deploy_apps`. `main-staging` has none: `platform` is its only entry, holds no database and never should — do not run the recipe for it, and this phase is empty there. `main-production` carries `commerce-ops`.
+Read which applications hold a database from this host's `deploy_apps`. `platform` holds none and never should: do not run the recipe for it. Where no other entry holds one, this phase is empty.
 
 ## 15. Deploy each application from its own repository
 
 **Credential:** held in that application's own repository, one set per deploy target — nothing in this repository can reach them.
 
-Nothing here can trigger these. For each application on this host other than `platform` (`main-staging` has none), go to that application's own Actions. **How you start it is that application's business and may not be a button**: `commerce-ops`'s `Deploy` workflow triggers on `push` to `main` and declares no `workflow_dispatch`, so there is no Run workflow to click and looking for one wastes time.
+Nothing here can trigger these. For each application on this host other than `platform`, go to that application's own Actions. **How you start it is that application's business and may not be a button**: a `Deploy` workflow that triggers on `push` to `main` and declares no `workflow_dispatch` has no Run workflow to click, and looking for one wastes time.
 
 **Re-running the last `Deploy` run is the route that belongs in a rebuild** — it redeploys the commit already on `main`, where pushing would mean inventing a commit to trigger a deploy:
 
