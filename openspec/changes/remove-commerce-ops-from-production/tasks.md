@@ -10,7 +10,7 @@ No Molecule scenario is owed: no role changes. No Terraform module changes, so n
 
 - [x] 1.1 Plan review by `ai-toolkit:change-plan-reviewer` reaches a verdict that permits proceeding, and any conditions are applied.
 - [x] 1.2 Commit the approved plan.
-- [ ] 1.3 Derive tests from the delta with `ai-toolkit:change-test-writer` (test command and glob: the `.github/tests` row of `AGENTS.md`'s *Testing*), and commit them.
+- [x] 1.3 Derive tests from the delta with `ai-toolkit:change-test-writer` (test command and glob: the `.github/tests` row of `AGENTS.md`'s *Testing*), and commit them.
 
 ## 2. Repository
 
