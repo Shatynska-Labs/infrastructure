@@ -799,17 +799,20 @@ def register_values_copied_into(text: str) -> list[str]:
 # --------------------------------------------------------------------------
 
 # SPECIFIED: the delta obliges the document to name *"any store that
-# requirement records as unmet"*. That requirement records exactly one --
-# `commerce-ops`'s own PostgreSQL, on the production host -- and states it in as
-# many words: *"this requirement SHALL be read as unmet in that one respect"*.
-UNMET_STORE = "commerce-ops"
+# requirement records as unmet"*. It records none: `commerce-ops`'s own
+# PostgreSQL on the production host was the one it named until
+# remove-commerce-ops-from-production deleted that divergence with the
+# application. A store the requirement records later is added here.
+UNMET_STORES: tuple[str, ...] = ()
 
 # DERIVED (proposal.md's Impact, design.md's Non-Goals): the two stores whose
 # contents a rebuild does not bring back on either stack.
 STORES_THAT_DO_NOT_COME_BACK = ("prometheus", "grafana")
 
 
-def losses_not_stated_before_the_destroy(text: str) -> list[str]:
+def losses_not_stated_before_the_destroy(
+    text: str, unmet_stores: tuple[str, ...] = UNMET_STORES
+) -> list[str]:
     """Everything the document owes its reader before the step that destroys
     the server and does not say there."""
     destroy = destroy_step_line(text)
@@ -829,13 +832,13 @@ def losses_not_stated_before_the_destroy(text: str) -> list[str]:
             f"{destroy}: the citation of that requirement does not carry its "
             f"capability spec path, `{STORE_REQUIREMENT_PATH}`"
         )
-    if UNMET_STORE not in lowered:
-        offences.append(
-            f"{destroy}: the store that requirement records as unmet "
-            f"(`{UNMET_STORE}`'s own PostgreSQL) is not named before the "
-            "destroy step"
-        )
-    else:
+    for store in unmet_stores:
+        if store not in lowered:
+            offences.append(
+                f"{destroy}: the store that requirement records as unmet "
+                f"(`{store}`'s) is not named before the destroy step"
+            )
+    if any(store in lowered for store in unmet_stores):
         production = [
             stack for stack in stack_names() if stack not in stacks_whose_loss_is_tolerable()
         ]
@@ -1605,9 +1608,13 @@ class TestTheOrderingDetectorsFire(unittest.TestCase):
         self.assertEqual(losses_not_stated_before_the_destroy(self.DOCUMENT), [])
 
     def test_an_unmet_store_named_only_after_the_destroy_step_is_reported(self) -> None:
+        """The requirement records no unmet store today, so the detector is
+        given one: the fixture's, which it must report once it is not named."""
+        recorded = ("commerce-ops",)
+        self.assertEqual(losses_not_stated_before_the_destroy(self.DOCUMENT, recorded), [])
         late = self.DOCUMENT.replace("commerce-ops's own PostgreSQL is lost outright", "")
-        offences = losses_not_stated_before_the_destroy(late)
-        self.assertTrue(any(UNMET_STORE in entry for entry in offences), offences)
+        offences = losses_not_stated_before_the_destroy(late, recorded)
+        self.assertTrue(any("commerce-ops" in entry for entry in offences), offences)
 
     def test_a_citation_without_its_capability_path_is_reported(self) -> None:
         pathless = self.DOCUMENT.replace(

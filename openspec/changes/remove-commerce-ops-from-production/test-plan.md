@@ -98,13 +98,16 @@ These were searched for within `.github/tests/*.py` only, on `commerce`, `diverg
    - **Superseded by:** the MODIFIED delta's removal of the divergence paragraph.
    - **Evidence:** it calls `losses_not_stated_before_the_destroy`, which requires `UNMET_STORE = "commerce-ops"` to be named before the destroy step. The module comment at that constant justifies it by quoting the removed paragraph ("this requirement SHALL be read as unmet in that one respect"). After this change it requires a sentence that `M.TestNoDocumentStillPlacesCommerceOpsOnProduction.test_the_runbook_does_not_place_commerce_ops_on_production` forbids.
    - design.md Decision 4 records the intended disposition: the set becomes an empty literal.
+   - **Disposition (apply):** changed. `UNMET_STORE` became `UNMET_STORES: tuple[str, ...] = ()`, with its comment saying the requirement records none since this change, and `losses_not_stated_before_the_destroy` takes the set as a parameter defaulting to it. What the runbook must say about a recorded store is unchanged.
 2. `test_the_rebuild_runbook_records_its_rehearsal.TestTheOrderingDetectorsFire.test_an_unmet_store_named_only_after_the_destroy_step_is_reported`
    - **Superseded by:** the same delta.
    - **Evidence:** it asserts `UNMET_STORE in entry`, where `UNMET_STORE` is the `commerce-ops` literal. Once the expected set is empty, it no longer has a store to look for.
    - Decision 4 keeps this negative case, showing that a store the requirement does record must be named. It would then use a fixture store.
+   - **Disposition (apply):** changed. It passes `("commerce-ops",)` to the detector as the fixture's recorded store, asserts the unaltered fixture reports nothing, and that the fixture without the sentence reports that store.
 3. `test_the_rebuild_runbook_records_its_rehearsal.TestTheOrderingDetectorsFire.test_the_losses_stated_before_the_destroy_step_are_not_reported`
    - **Superseded by:** the same delta, weakly.
    - **Evidence:** its `DOCUMENT` fixture states "on main-production, commerce-ops's own PostgreSQL is lost outright", which is the superseded fact. It does not fail as a result. It is listed so that the reader deciding entries 1 and 2 sees the fixture they share, and it may well be kept as it is.
+   - **Disposition (apply):** kept unchanged. The fixture is a sample document, and entry 2 now relies on its sentence.
 
 Examined and **not** obsolete:
 
@@ -125,17 +128,21 @@ AGENTS.md *Testing* records that no suite has a shared test arrangement, and the
    - **Stands in for:** the repository-root locator.
    - **Used by:** every non-fixture test in `M`.
    - **Found in test module:** `test_ci_configuration.py` (`_repo_root`, `ROOT`), declared here identically.
+   - **Disposition (apply):** kept local. The project records no shared test arrangement (`AGENTS.md` *Testing*), so there is nowhere to promote it; `docs/backlog.md` `share-the-static-suites-test-arrangement` is where it would go.
 2. `read_text`, with `_shown`
    - **Stands in for:** reading a committed file, failing where it is absent.
    - **Used by:** every test in `M.TestTheProductionHostVarsNoLongerAuthoriseCommerceOps` and `M.TestNoDocumentStillPlacesCommerceOpsOnProduction`, and `M.TestTheDocumentDetectorsFire.test_an_empty_document_is_refused_rather_than_read_as_clean`.
    - **Found in test module:** `test_ci_configuration.py` (`read_text`). It is declared here with an added refusal of an empty file, because an absence check over an empty file would pass having read nothing.
+   - **Disposition (apply):** kept local. The project records no shared test arrangement (`AGENTS.md` *Testing*), so there is nowhere to promote it; `docs/backlog.md` `share-the-static-suites-test-arrangement` is where it would go.
 3. `_VaultTolerantLoader`, `host_vars`, `UnreadableHostVars`
    - **Stands in for:** reading an Ansible `host_vars` file that may carry `!vault`, refusing any other tag.
    - **Used by:** all of `M.TestTheProductionHostVarsNoLongerAuthoriseCommerceOps` and `M.TestTheHostVarsReadersFire`.
    - **Found in test modules:** equivalents in `test_the_platform_stack_deploys_per_stack.py` (`AnsibleTolerantLoader`, `inventory_variables`, `UnreadableInventoryVars`), `test_a_deploy_key_is_bound_to_one_host.py` (`AnsibleTolerantLoader`) and `test_a_shared_instance_reset_is_visible.py` (`_TolerantLoader`).
+   - **Disposition (apply):** kept local. The project records no shared test arrangement (`AGENTS.md` *Testing*), so there is nowhere to promote it; `docs/backlog.md` `share-the-static-suites-test-arrangement` is where it would go.
 4. `deploy_app_names`
    - **Stands in for:** the names in a host's `deploy_apps` list, refusing an absent or empty list.
    - **Used by:** `M.TestTheProductionHostVarsNoLongerAuthoriseCommerceOps.test_no_deploy_apps_entry_is_named_commerce_ops`, `M.TestTheProductionHostVarsNoLongerAuthoriseCommerceOps.test_every_other_application_keeps_its_entry` and `M.TestTheHostVarsReadersFire.*`.
    - **Found in test module:** a similar reader in `test_a_shared_instance_reset_is_visible.py`.
+   - **Disposition (apply):** kept local. The project records no shared test arrangement (`AGENTS.md` *Testing*), so there is nowhere to promote it; `docs/backlog.md` `share-the-static-suites-test-arrangement` is where it would go.
 
 Each entry's disposition (promoted, or kept and why) is to be written against it by `apply` (tasks.md 2.5).
