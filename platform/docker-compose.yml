@@ -381,7 +381,7 @@ services:
       start_period: 15s
 
   grafana:
-    image: grafana/grafana:13.2.3
+    image: grafana/grafana:13.2.4
     restart: unless-stopped
     labels:
       # apply-shipped-config-on-deploy -- see the prometheus service above for
