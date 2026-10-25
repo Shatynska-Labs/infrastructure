@@ -192,6 +192,13 @@ services:
       - --path.procfs=/host/proc
       - --path.sysfs=/host/sys
       - --path.rootfs=/host/root
+      # Each application's backup-age series (*A Backed-Up Store's Backup
+      # Age Is Alerted On*, record-basis-api-durable-store). Read through the
+      # read-only root mount below: no new mount, and no network an
+      # application joins. The glob always matches the empty
+      # applications/platform/metrics every host carries, because a glob
+      # matching nothing is reported as a read error.
+      - --collector.textfile.directory=/host/root/mnt/main/applications/*/metrics
     volumes:
       - /proc:/host/proc:ro
       - /sys:/host/sys:ro
@@ -636,6 +643,64 @@ configs:
               annotations:
                 summary: "TLS certificate expiry is not fully observable"
                 description: "Traefik is publishing no certificate expiry carrying a cn label, or at least one certificate has lost it, so TLSCertificateExpiringSoon is watching nothing or cannot name what it watches."
+
+            # record-basis-api-durable-store: backup age of a store admitted
+            # under the backup fallback of *No Store on This Host Holds Data
+            # Requiring Backup*. The application writes, into its own
+            # /mnt/main/applications/<app>/metrics, one pair per kind of
+            # backup -- backup_last_success_timestamp_seconds{store, kind} and
+            # backup_max_age_seconds{store, kind} -- as `.prom` files written
+            # atomically (temporary name, chmod 0644, rename), with any
+            # `# HELP`/`# TYPE` line byte-identical across files or omitted:
+            # node-exporter runs as nobody, and differing help text is a read
+            # error that drops a file's series (both measured against v1.12.1).
+            # The maximum age is the application's, from its recovery targets.
+            - alert: BackupStale
+              expr: >-
+                time() - backup_last_success_timestamp_seconds
+                > on(store, kind) backup_max_age_seconds
+              for: 10m
+              labels:
+                severity: warning
+              annotations:
+                summary: "{{ $$labels.store }} {{ $$labels.kind }} backup is overdue"
+                description: "The last successful {{ $$labels.kind }} backup of {{ $$labels.store }} is older than the maximum age its application declares."
+
+            # A timestamp nobody can judge: without a maximum age the rule
+            # above returns nothing for the pair, however old it gets.
+            - alert: BackupAgeUnbounded
+              expr: >-
+                backup_last_success_timestamp_seconds
+                unless on(store, kind) backup_max_age_seconds
+              for: 1h
+              labels:
+                severity: warning
+              annotations:
+                summary: "{{ $$labels.store }} {{ $$labels.kind }} backup has no maximum age"
+                description: "{{ $$labels.store }} publishes a last-success time for its {{ $$labels.kind }} backup but no backup_max_age_seconds, so BackupStale cannot judge it."
+
+            - alert: TextfileMetricsUnreadable
+              expr: node_textfile_scrape_error == 1
+              for: 15m
+              labels:
+                severity: warning
+              annotations:
+                summary: "node-exporter cannot read an application metrics file"
+                description: "The textfile collector failed to read a file under /mnt/main/applications/*/metrics -- an unreadable mode, inconsistent help text, or no directory matching at all -- so backup-age alerts may be watching nothing. node-exporter's log names the file."
+
+            # The textfile collector serves one of two series with the same
+            # name and labels, drops the other and reports no read error; the
+            # handler's gathering-error counter is the only trace (measured
+            # against v1.12.1). A dropped duplicate can hide a stale backup
+            # behind a fresh one.
+            - alert: NodeExporterGatheringErrors
+              expr: >-
+                increase(promhttp_metric_handler_errors_total{job="node-exporter", cause="gathering"}[15m]) > 0
+              labels:
+                severity: warning
+              annotations:
+                summary: "node-exporter is failing to gather a metric"
+                description: "node-exporter dropped a series while gathering -- usually the same series collected twice, such as two application metrics files emitting one backup series. node-exporter's log names it."
 
             - alert: Watchdog
               expr: vector(1)
