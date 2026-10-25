@@ -203,13 +203,15 @@
   # only becomes visible at a reboot months later.
 
 - name: Create the dependent subdirectories on the mounted volume, with per-service ownership
+  # The environment's entries first, then the host's own: an application's
+  # tree sits beneath `applications/`, which the environment declares.
   ansible.builtin.file:
     path: "{{ platform_data_volume_mount_path }}/{{ item.path }}"
     state: directory
     owner: "{{ item.owner }}"
     group: "{{ item.group }}"
     mode: "{{ item.mode }}"
-  loop: "{{ platform_data_volume_subdirs }}"
+  loop: "{{ platform_data_volume_subdirs + platform_data_volume_host_subdirs }}"
   loop_control:
     label: "{{ item.path }}"
   # Runs after the mount task above, not before: a subdirectory created

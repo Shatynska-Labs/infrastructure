@@ -16,7 +16,8 @@
 # same environment would need a different value or none at all.
 #
 # WHAT STAYS IN `group_vars/production.yml` rather than moving here: the
-# environment-wide baseline -- `ansible_user`, the volume subdirectories, the
+# environment-wide baseline -- `ansible_user`, the platform's volume
+# subdirectories (an application's live here, below), the
 # registry credential, the heartbeat project key -- which is true of every host
 # in this environment whichever tenant owns it. That file also still carries
 # three values whose axis is questionable, named in the requirement above as
@@ -81,3 +82,34 @@ deploy_apps:
   - name: basis-api
     public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINDKLdgm242zhB9wy9fDN0YBPR2sfG00VWPLzMZz5OeQ basis-api-deploy-main-production"
     probe_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICpA58JRf6vLRLb4Pyzepe3FPqLE8U4sXBc6bsbB2KTe basis-api-probe-main-production"
+
+# basis-api's own tree on the data volume, beneath the root-owned
+# `applications/` the environment declares (platform_data_volume_host_subdirs,
+# created after group_vars' platform_data_volume_subdirs). `postgres` holds
+# basis-api's durable PostgreSQL data, admitted under the backup fallback of
+# *No Store on This Host Holds Data Requiring Backup*
+# (openspec/specs/iac-safety-hardening/spec.md): a daily encrypted pg_dump and
+# continuous WAL archiving to Hetzner Object Storage outside hel1, with
+# restores rehearsed in Shatynska-Labs/basis's move-to-durable-data-storage
+# before data lands. `metrics` is where its backup jobs write the backup-age
+# series node-exporter's textfile collector reads (*A Backed-Up Store's Backup
+# Age Is Alerted On*, openspec/specs/iac-platform-services/spec.md).
+#
+# 999:999 is the Debian-based official `postgres` image's user, which basis-api's
+# container and its archive and dump jobs run as; an Alpine tag would be 70, so
+# the owner follows the image variant Basis runs. `postgres` is 0700 because it
+# holds the cluster; `metrics` is 0755 so node-exporter, running as `nobody`,
+# can read the files in it.
+platform_data_volume_host_subdirs:
+  - path: applications/basis-api
+    owner: root
+    group: root
+    mode: "0755"
+  - path: applications/basis-api/postgres
+    owner: "999"
+    group: "999"
+    mode: "0700"
+  - path: applications/basis-api/metrics
+    owner: "999"
+    group: "999"
+    mode: "0755"

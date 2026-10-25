@@ -24,6 +24,14 @@ platform_data_volume_fs_type: ext4
 # one. Each entry is {path, owner, group, mode} — see README.md.
 platform_data_volume_subdirs: []
 
+# The same shape, for one host's applications rather than the environment's
+# platform services, supplied from that host's own host_vars file -- "A
+# Host-Scoped Variable Lives in the Host's Own Vars File". A second variable
+# rather than a second definition of the first, because Ansible replaces a
+# list across precedence levels rather than merging it. Created after the
+# environment's list, so a parent the environment declares exists first.
+platform_data_volume_host_subdirs: []
+
 # Host paths this volume was previously mounted at and is not any more. Each
 # one is removed from /etc/fstab, so that a device whose fixed path has moved
 # is not persisted at two paths and does not remount at both on the next
