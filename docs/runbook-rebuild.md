@@ -24,13 +24,13 @@ Do this before anything else. Everything below it is recoverable; the contents o
 
 **Two stores come back empty and nothing says so at the time.** Prometheus's time-series database is gone, so every metric older than the rebuild is gone with it — the dashboards render, they are simply empty to the left of today. Grafana's UI-created state is gone too: dashboards saved or edited through Grafana's own interface, its users, its preferences and its annotations. What comes back is what this repository provisions, which is the datasource and the committed dashboards. If there is a dashboard on that host somebody built by hand and wants, **export it now**; after the next phase it is not recoverable from anywhere.
 
-**Two alarms will fire, both are expected, and neither is muted.** Say so wherever your alerts are read before you start, because the whole design of this system is that a check going quiet is as loud as one that fails:
+**Two alarms will fire on staging and three on production; all are expected, and none is muted.** Say so wherever your alerts are read before you start, because the whole design of this system is that a check going quiet is as loud as one that fails:
 
 - `main-staging-alertmanager` is the host's dead-man's-switch. It is fed by Alertmanager's Watchdog every two minutes, so it goes overdue within minutes of the server being destroyed and pages `#alerts` continuously until the platform stack is running again on the rebuilt host — tens of minutes, not minutes. This is the alarm for when everything is down, and during a rebuild everything is in fact down.
 - `main-staging-prune-host-images` goes red and stays red until phase 13 triggers an activation by hand. It does not clear on its own.
 - **On `main-production` only**, `BackupStale` may fire once the platform stack is back: `basis-api`'s backup metrics files kept aging while the host was down, and it clears at the next successful backup of each kind. If it does not clear, the backups have not resumed, which is a real fault.
 
-Do not mute either. A check muted for a rebuild is one nobody re-arms, and an unarmed dead-man's-switch is the failure this entire mechanism exists to prevent.
+Do not mute any of them. A check muted for a rebuild is one nobody re-arms, and an unarmed dead-man's-switch is the failure this entire mechanism exists to prevent.
 
 **Expect the host key to be rejected three separate times later, and know now that it is not a fault.** A rebuilt host is a new machine presenting a new key on every identity you reach it by, and each one fails only when that identity is first used — spread across phases 7, 8 and 10, which is why it otherwise reads as three unrelated problems:
 
