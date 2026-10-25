@@ -3,8 +3,8 @@
 - [x] 1.1 `terraform/modules/volume/`: add an optional `location` (default `null`); make `server_id` nullable with default `null`; replace its non-empty validation with one requiring exactly one of `server_id` and `location` to be non-null, and rejecting an empty string for either. Pass both to `hcloud_volume.this` as given (`design.md` decision 3). Rewrite the comment above the resource and the variables' descriptions to say why both exist. Leave the existing `tests/*.tftest.hcl` assertions unchanged.
 - [x] 1.2 `terraform/stacks/main-production/main.tf`: `count = var.volume_enabled ? 1 : 0`; pass `location = var.server_enabled ? null : var.location`; keep `server_id = one(module.server[*].id)`. Rewrite the comment above the module, saying why the choice turns on `server_enabled` rather than on `server_id`; update `volume_enabled`'s and `server_enabled`'s descriptions in `variables.tf` and `volume_id`'s in `outputs.tf`. `main-staging` is not edited.
 - [x] 1.3 `terraform fmt -check -recursive`, `terraform validate` in both stacks and the module, `tflint`, and `terraform test` in `terraform/modules/volume/`. Done: fmt, validate (both stacks), tflint clean; `terraform test` 17 passed, 0 failed.
-- [ ] 1.4 Read the pull request's production plan: it SHALL show no change to any resource. A planned replacement or destruction of `module.volume[0].hcloud_volume.this` stops the change.
-- [ ] 1.5 Open a plan-only pull request from a throwaway branch setting `main-production`'s `server_enabled = false`; its plan SHALL destroy the server and firewall and leave the volume unchanged. Record the plan summary here and close the pull request unmerged.
+- [x] 1.4 Read the pull request's production plan: it SHALL show no change to any resource. A planned replacement or destruction of `module.volume[0].hcloud_volume.this` stops the change. Done: PR #287's `plan (main-production)` reads "No changes. Your infrastructure matches the configuration." (volume id 106651381 refreshed, unchanged).
+- [x] 1.5 Open a plan-only pull request from a throwaway branch setting `main-production`'s `server_enabled = false`; its plan SHALL destroy the server and firewall and leave the volume unchanged. Record the plan summary here and close the pull request unmerged. Done: draft PR #288, `plan (main-production)`: `Plan: 0 to add, 0 to change, 2 to destroy` — `module.server[0].hcloud_server.this` and `module.server[0].hcloud_firewall.this`; `module.volume[0].hcloud_volume.this` (id 106651381) unchanged. Closed unmerged and its branch deleted on 2026-10-25.
 
 ## 2. Ansible: the application's directories on production's volume
 
@@ -32,7 +32,7 @@
 
 ## 6. Ship
 
-- [ ] 6.1 Open the pull request; let CI run; read the production plan comment against 1.4.
+- [x] 6.1 Open the pull request; let CI run; read the production plan comment against 1.4. PR #287; every check passed (validate, both plans, both discover, ansible-verify, molecule (platform_data_volume)).
 - [ ] 6.2 The operator merges, approves production's apply (expected no-op) and production's converge — before the platform deploy or within 15 minutes of it (`design.md` Migration Plan) — and confirms the platform deploy is healthy on both hosts.
 
 ## 7. Confirm the effect
