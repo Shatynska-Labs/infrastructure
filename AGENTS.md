@@ -1,4 +1,4 @@
-<!-- ai-toolkit:development-workflow v10 -->
+<!-- ai-toolkit:development-workflow v12 -->
 <!-- Generated. Do not edit inside this block — it is replaced on update.
      Project-specific conventions belong below the closing marker. -->
 
@@ -32,9 +32,11 @@ Where this project binds these two rules to a particular service, the binding is
 
 On entering a working tree, before anything else, and again as the last thing said before stopping, report the change's status as one line, in this exact form, with `|` as a plain-text field separator without header rows:
 
-`| <change> | <stage> | <task progress> | <commits> |`
+`| <workstream> | <change> | <stage> | <task progress> | <commits> |`
 
-For example: `| some-change | plan:explore | 0/0 | 1 |`
+For example: `| none | some-change | plan:explore | 0/0 | 1 |`
+
+The workstream is the open one whose steps name the change; else the workstream its proposal names; else the one its backlog entry names; else `none`.
 
 Each field is a short value, not a sentence — nothing else belongs on that line.
 
@@ -58,6 +60,8 @@ Always write the family prefix: `plan:reviewing` and `build:reviewing` dispatch 
 
 **draft** — use a specification-driven change process for non-trivial features, changes and significant architectural decisions. Do not begin implementing without a proposal recording what is intended and why. A change's artifacts are read before implementation, not written afterwards to describe what was done.
 
+Where a workstream in `docs/workstreams/` names this change among its steps, or the change serves one's goal, the proposal names that workstream; otherwise it states that the change advances none. Where the change is one of several a goal needs and no workstream holds them, propose opening one, as that directory's README directs.
+
 **review → fix → approve** — dispatch review against the complete artifact set, never a package still being written. Fix and re-review until the verdict permits proceeding, bounded at six rounds; on reaching it, report where the loop stands and what is outstanding, and ask before continuing. A conditional pass is permission conditional on the fixes it names: apply them and continue without a further round. Where the reviewer judges the concept unsound rather than the artifacts defective, stop and raise it immediately, whatever the count.
 
 _Claude Code binding:_ dispatch `ai-toolkit:change-plan-reviewer` once every artifact the change calls for is complete. Do not use `/code-review` for this gate — it reads a diff, and at this point there is none. On `FIX REQUIRED` fix and re-dispatch; on `CONDITIONALLY APPROVED` apply the `[MINOR]` fixes and continue; on `APPROVED` continue; on `REJECTED` stop and raise it.
@@ -72,7 +76,7 @@ _Claude Code binding:_ dispatch `ai-toolkit:change-test-writer` after the verdic
 
 ### build
 
-**apply** — implement only once two things hold: a commit holding the approved plan, which follows the verdict that permitted proceeding, and the derived tests — or the stated exemption that excused them. Where either is absent, take the missing step rather than starting and noting the gap. Work too small to be a change skipped `plan` and has neither to hold. Before implementing, read `docs/backlog.md` for entries the scope rule would let this change fold in, and take each as folded-in work whose commit names the entry; leave the entry itself to the archive step.
+**apply** — implement only once two things hold: a commit holding the approved plan, which follows the verdict that permitted proceeding, and the derived tests — or the stated exemption that excused them. Where either is absent, take the missing step rather than starting and noting the gap. Work too small to be a change skipped `plan` and has neither to hold. Before implementing, read `docs/backlog/` for entries the scope rule would let this change fold in, and take each as folded-in work whose commit names the entry; leave the entry itself to the archive step.
 
 Where the test author declared arrangement locally because the shared test arrangement lacked it, the change's test plan lists each such entry. Deal with every entry in this change, before `build`'s review, and record its disposition against the entry: **promote** it — add it to the shared test arrangement, or extend the near-miss the entry names, and move the derived tests that declared it onto it — or **keep** it local and record the reason. A local copy drifts from the interface it stands in for, and later tests import it from the test file that declared it. Moving derived tests onto promoted arrangement is permitted: change only where a test takes its arrangement from — remove the local declaration, import from the shared arrangement, adapt to its constructor — and never what the test asserts. Where this project's conventions record no shared arrangement's location, whether they state it has none or are silent, keep every entry with that reason; creating a shared arrangement, or recording where one lives, is a decision about the project's testing strategy, not a step of this change.
 
@@ -103,7 +107,7 @@ Two classes cannot answer that gate and are waivable. Say so plainly, name the c
 
 A recorded waiver completes **confirm**: `ship:confirmed` is true of a waived change.
 
-**archive** — once the effect is confirmed or the gate waived, bring the branch back to the freshly fetched trunk, commit the change's specification record there, and open a pull request for it: the last of the change's pull requests. The work is on the trunk by now, however it was merged, so bringing the branch back to it discards nothing. Before opening that pull request, re-read `docs/backlog.md` for the entries this change completed, made obsolete, unblocked or made stale (including entries naming files or specifications it touched, not only entries naming it) and update each as the file directs, in the commit that carries the record.
+**archive** — once the effect is confirmed or the gate waived, bring the branch back to the freshly fetched trunk, commit the change's specification record there, and open a pull request for it: the last of the change's pull requests. The work is on the trunk by now, however it was merged, so bringing the branch back to it discards nothing. Before opening that pull request, re-read `docs/backlog/` for the entries this change completed, made obsolete, unblocked or made stale (including entries naming files or specifications it touched, not only entries naming it) and update each as its README directs, in the commit that carries the record. Where the change advanced a workstream, re-read it the same way: place the entries attached to it, revise the steps the change made obsolete, and archive it once what finishes it holds, as `docs/workstreams/README.md` directs, in the same commit.
 
 Two is a floor. Where the deploy is unhealthy, or the effect is absent through a defect, the change is not delivered and its record is not written: fix it and re-enter at `build`'s review gate; the fix takes a pull request of its own.
 
@@ -124,13 +128,13 @@ While applying, the derived tests fail by design until the implementation is com
 **A second change surfacing.** You work on one change at a time. Work you identify that the scope rule does not fold in is a second change: record it before doing anything else about it.
 
 - Where the change in progress **depends** on it: record the dependency and the wait in the current change's own artifacts, then at most open the identified change and recommend it be continued in a separate session.
-- Where it **does not**: record it in `docs/backlog.md`. That is what is owed; opening the identified change instead is the option.
+- Where it **does not**: record it in `docs/backlog/`. That is what is owed; opening the identified change instead is the option.
 
 *Opening* one means a branch of its own and a `handoff.md`, with no proposal — why the change was identified, what bears on it, and what it must not undo. Place it in the new change's own directory in this project's change-record layout — for OpenSpec, `openspec/changes/<name>/handoff.md`. The session that takes it up writes the proposal. Commit that branch at once: the session that opened it is not returning to it, so no later commit of its own will carry the handoff.
 
 Such a branch is created and left: it takes no working tree and does not become the branch this session works on.
 
-`docs/backlog.md` holds identified changes, each the separate proposed change the scope rule calls for, recorded rather than opened. It sits outside any change, because a note kept inside one is archived with it: it is the change succeeding, not the session ending, that would lose it. The file itself states how an entry is written and when it is deleted.
+`docs/backlog/` holds identified changes, one file per entry, each the separate proposed change the scope rule calls for, recorded rather than opened. It sits outside any change, because a note kept inside one is archived with it: it is the change succeeding, not the session ending, that would lose it. Its README states how an entry is written and when it is deleted.
 
 **Assumptions.** Do not silently invent a requirement that was not stated and cannot reasonably be inferred; where an important decision cannot be inferred, ask rather than guess. Record significant decisions in this project's own artifacts rather than in conversation history alone.
 
