@@ -29,14 +29,28 @@ variable "size" {
 }
 
 variable "server_id" {
-  description = "ID of the hcloud_server this volume attaches to at creation. This module never sets `location` (see the volume module's design), so the provider requires either a location or an attached server — server_id must always be supplied and non-empty; there is no unattached-volume mode."
+  description = "ID of the hcloud_server this volume attaches to, or null. Exactly one of server_id and location is set: the provider refuses a create naming both. A volume created with server_id is attached at creation and takes that server's location."
   type        = string
-  nullable    = false
+  default     = null
 
   validation {
-    condition     = length(trimspace(var.server_id)) > 0
-    error_message = "server_id must not be empty — this module has no location of its own, so the volume can only be created attached to a server."
+    condition     = var.server_id == null ? true : length(trimspace(var.server_id)) > 0
+    error_message = "server_id must not be empty -- pass null instead when the volume has no server."
   }
+
+  # Declared on server_id because a cross-variable condition must name the
+  # variable it is attached to. It also refuses an empty location, which
+  # would otherwise reach the provider as a location named "".
+  validation {
+    condition     = var.server_id == null ? (var.location == null ? false : length(trimspace(var.location)) > 0) : var.location == null
+    error_message = "Exactly one of server_id and location must be set, and neither may be empty: the provider refuses a volume created with both, and a volume with neither has nowhere to exist."
+  }
+}
+
+variable "location" {
+  description = "Hetzner location to create this volume in, or null. Set only when server_id is null -- a volume kept while its server is disabled. A caller choosing between the two SHALL choose on a value known at plan time, since an unknown location on this ForceNew attribute plans the volume's replacement."
+  type        = string
+  default     = null
 }
 
 variable "delete_protection" {
