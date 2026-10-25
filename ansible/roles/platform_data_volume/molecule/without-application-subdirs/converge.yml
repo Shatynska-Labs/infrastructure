@@ -1,0 +1,57 @@
+---
+# Scenario: A host declaring no application subdirectories --
+# iac-host-configuration, *Platform Data Volume Is Mounted at a Fixed Host
+# Path* (openspec/specs/iac-host-configuration/spec.md), as the change
+# record-basis-api-durable-store restates it. Written before that change's
+# implementation existed; see its test-plan.md.
+#
+# `platform_data_volume_host_subdirs` is deliberately NOT set anywhere in this
+# play: the case is a host whose own vars file declares none, so the role's own
+# default is what the converge runs on. Setting it to `[]` here would test a
+# different thing -- an explicit empty list -- and would pass over a role whose
+# default is missing.
+#
+# The converge succeeding (and idempotence passing) is half of what the
+# scenario says: "SHALL NOT fail for the absence". verify.yml holds the other.
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Offset 8 of the sixteen minors this working tree claims -- derived exactly
+    # as prepare.yml derives it.
+    platform_data_volume_fixture_loop_base: "{{ lookup('env', 'INFRA_WORKTREE_LOOP_BASE') }}"
+    platform_data_volume_fixture_loop_minor: "{{ platform_data_volume_fixture_loop_base | int + 8 }}"
+    platform_data_volume_device: /dev/loop{{ platform_data_volume_fixture_loop_minor }}
+    platform_data_volume_mount_path: /mnt/main
+    platform_data_volume_fs_type: ext4
+    platform_data_volume_subdirs:
+      - path: prometheus
+        owner: "65534"
+        group: "65534"
+        mode: "0755"
+      - path: applications
+        owner: root
+        group: root
+        mode: "0755"
+      - path: applications/platform
+        owner: root
+        group: root
+        mode: "0755"
+      - path: applications/platform/metrics
+        owner: root
+        group: root
+        mode: "0755"
+  pre_tasks:
+    - name: Refuse to run without this working tree's loop-minor base
+      ansible.builtin.assert:
+        that:
+          - platform_data_volume_fixture_loop_base is match('^[0-9]+$')
+          - platform_data_volume_fixture_loop_base | int >= 1024
+        fail_msg: >-
+          INFRA_WORKTREE_LOOP_BASE is unset or is not a loop-minor base
+          (read as '{{ platform_data_volume_fixture_loop_base }}'). Run the
+          suite through ansible/scripts/run-molecule, which derives it from
+          this working tree's own path -- see AGENTS.md, "Namespacing Molecule
+          per working tree".
+  roles:
+    - role: platform_data_volume

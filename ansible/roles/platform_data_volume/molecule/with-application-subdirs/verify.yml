@@ -1,0 +1,144 @@
+---
+# Verifies the scenario "An application's subdirectories exist on the host it
+# is declared for" (iac-host-configuration, *Platform Data Volume Is Mounted at
+# a Fixed Host Path*, openspec/specs/iac-host-configuration/spec.md), as the
+# change record-basis-api-durable-store restates it. Each assertion is
+# classified in that change's test-plan.md.
+#
+# WHAT THIS DOES NOT ESTABLISH: "no other host SHALL receive them" is a
+# property of where the inventory declares the list, which a single-host
+# converge cannot observe -- `.github/tests/test_basis_api_durable_store.py`
+# reads it. Nor is "after the environment's own subdirectories" observable
+# here: Ansible creates missing parents itself, so the final tree is the same
+# in either order.
+- name: Verify
+  hosts: all
+  become: true
+  vars:
+    platform_data_volume_mount_path: /mnt/main
+    # Redeclared because a verify play does not inherit converge's vars.
+    platform_data_volume_fixture_loop_base: "{{ lookup('env', 'INFRA_WORKTREE_LOOP_BASE') }}"
+    platform_data_volume_expected_environment_subdirs:
+      - path: prometheus
+        owner: "65534"
+        group: "65534"
+        mode: "0755"
+      - path: applications
+        owner: "0"
+        group: "0"
+        mode: "0755"
+      - path: applications/platform
+        owner: "0"
+        group: "0"
+        mode: "0755"
+      - path: applications/platform/metrics
+        owner: "0"
+        group: "0"
+        mode: "0755"
+    platform_data_volume_expected_host_subdirs:
+      - path: applications/basis-api
+        owner: "0"
+        group: "0"
+        mode: "0755"
+      - path: applications/basis-api/postgres
+        owner: "999"
+        group: "999"
+        mode: "0700"
+      - path: applications/basis-api/metrics
+        owner: "999"
+        group: "999"
+        mode: "0755"
+  tasks:
+    - name: Refuse to run without this working tree's loop-minor base
+      ansible.builtin.assert:
+        that:
+          - platform_data_volume_fixture_loop_base is match('^[0-9]+$')
+          - platform_data_volume_fixture_loop_base | int >= 1024
+        fail_msg: >-
+          INFRA_WORKTREE_LOOP_BASE is unset or is not a loop-minor base
+          (read as '{{ platform_data_volume_fixture_loop_base }}'). Run the
+          suite through ansible/scripts/run-molecule, which derives it from
+          this working tree's own path -- see AGENTS.md, "Namespacing Molecule
+          per working tree".
+
+    # Premise: the volume is mounted, so a device-id comparison below means
+    # something. Without it, every directory would sit on the root filesystem
+    # and the "on the mounted volume" assertion would compare two equal ids.
+    - name: Read the live mount table entry for the fixed mount path
+      ansible.builtin.command: findmnt --noheadings --output TARGET {{ platform_data_volume_mount_path }}
+      register: platform_data_volume_findmnt
+      changed_when: false
+      failed_when: platform_data_volume_findmnt.rc != 0
+
+    - name: Stat the mount point and the container's root filesystem
+      ansible.builtin.stat:
+        path: "{{ item }}"
+      loop:
+        - "{{ platform_data_volume_mount_path }}"
+        - /
+      register: platform_data_volume_reference_stats
+
+    - name: Stat every declared subdirectory, the environment's and the host's
+      ansible.builtin.stat:
+        path: "{{ platform_data_volume_mount_path }}/{{ item.path }}"
+      loop: "{{ platform_data_volume_expected_environment_subdirs + platform_data_volume_expected_host_subdirs }}"
+      loop_control:
+        label: "{{ item.path }}"
+      register: platform_data_volume_subdir_stats
+
+    # SPECIFIED -- "each SHALL exist beneath `applications/<application>/` on
+    # the mounted volume with the ownership and permissions declared"; and the
+    # environment's `applications/platform/metrics`, "root-owned, on every
+    # host". Compared by numeric id: 999 resolves to no name in this image,
+    # and an unguarded name comparison is how default/verify.yml once failed.
+    - name: Assert every declared subdirectory exists with the declared ownership and mode
+      ansible.builtin.assert:
+        that:
+          - item.stat.exists
+          - item.stat.isdir
+          - (item.stat.uid | string) == item.item.owner
+          - (item.stat.gid | string) == item.item.group
+          - item.stat.mode == item.item.mode
+        fail_msg: >-
+          {{ platform_data_volume_mount_path }}/{{ item.item.path }} is missing,
+          not a directory, or not {{ item.item.owner }}:{{ item.item.group }}
+          {{ item.item.mode }} (found exists={{ item.stat.exists }}
+          uid={{ item.stat.uid | default('?') }} gid={{ item.stat.gid | default('?') }}
+          mode={{ item.stat.mode | default('?') }}).
+      loop: "{{ platform_data_volume_subdir_stats.results }}"
+      loop_control:
+        label: "{{ item.item.path }}"
+
+    # SPECIFIED -- "on the mounted volume", and "after the mount": a directory
+    # created before the mount is hidden beneath it and is not what a bind
+    # mount reads.
+    - name: Assert every declared subdirectory is on the mounted volume, not the root filesystem
+      ansible.builtin.assert:
+        that:
+          - item.stat.dev == platform_data_volume_reference_stats.results[0].stat.dev
+          - item.stat.dev != platform_data_volume_reference_stats.results[1].stat.dev
+        fail_msg: >-
+          {{ platform_data_volume_mount_path }}/{{ item.item.path }} is not on
+          the volume mounted at {{ platform_data_volume_mount_path }}.
+      loop: "{{ platform_data_volume_subdir_stats.results }}"
+      loop_control:
+        label: "{{ item.item.path }}"
+
+    # SPECIFIED -- "empty", for the environment's platform metrics directory:
+    # the collector's glob must match an empty directory, not one the role
+    # seeded with a file.
+    - name: List the platform's own metrics directory
+      ansible.builtin.find:
+        paths: "{{ platform_data_volume_mount_path }}/applications/platform/metrics"
+        file_type: any
+        hidden: true
+      register: platform_data_volume_platform_metrics
+
+    - name: Assert the platform's own metrics directory is empty
+      ansible.builtin.assert:
+        that:
+          - platform_data_volume_platform_metrics.matched == 0
+        fail_msg: >-
+          {{ platform_data_volume_mount_path }}/applications/platform/metrics
+          holds {{ platform_data_volume_platform_metrics.files | map(attribute='path') | list }};
+          it is declared empty.

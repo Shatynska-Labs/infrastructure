@@ -1,0 +1,70 @@
+---
+# Verifies the scenario "A host declaring no application subdirectories"
+# (iac-host-configuration, *Platform Data Volume Is Mounted at a Fixed Host
+# Path*, openspec/specs/iac-host-configuration/spec.md), as the change
+# record-basis-api-durable-store restates it. Classified in that change's
+# test-plan.md.
+#
+# SPECIFIED -- "the run SHALL create only the environment's subdirectories".
+# Read as: the directories on the mounted volume are exactly the environment's
+# declared ones (plus the filesystem's own `lost+found`), so a role that
+# invented an application directory, or created one from some default list,
+# is caught. The other half, "SHALL NOT fail for the absence", is the converge
+# and idempotence actions succeeding, which Molecule reports before this play
+# runs.
+- name: Verify
+  hosts: all
+  become: true
+  vars:
+    platform_data_volume_mount_path: /mnt/main
+    platform_data_volume_fixture_loop_base: "{{ lookup('env', 'INFRA_WORKTREE_LOOP_BASE') }}"
+    platform_data_volume_expected_paths:
+      - prometheus
+      - applications
+      - applications/platform
+      - applications/platform/metrics
+  tasks:
+    - name: Refuse to run without this working tree's loop-minor base
+      ansible.builtin.assert:
+        that:
+          - platform_data_volume_fixture_loop_base is match('^[0-9]+$')
+          - platform_data_volume_fixture_loop_base | int >= 1024
+        fail_msg: >-
+          INFRA_WORKTREE_LOOP_BASE is unset or is not a loop-minor base
+          (read as '{{ platform_data_volume_fixture_loop_base }}'). Run the
+          suite through ansible/scripts/run-molecule, which derives it from
+          this working tree's own path -- see AGENTS.md, "Namespacing Molecule
+          per working tree".
+
+    # Premise: the volume is mounted. Without it the listing below would read
+    # the empty mount-point directory on the root filesystem and report a
+    # mismatch for the wrong reason -- or, worse, pass for none.
+    - name: Read the live mount table entry for the fixed mount path
+      ansible.builtin.command: findmnt --noheadings --output TARGET {{ platform_data_volume_mount_path }}
+      register: platform_data_volume_findmnt
+      changed_when: false
+      failed_when: platform_data_volume_findmnt.rc != 0
+
+    - name: List every directory on the mounted volume
+      ansible.builtin.find:
+        paths: "{{ platform_data_volume_mount_path }}"
+        file_type: directory
+        recurse: true
+        hidden: true
+      register: platform_data_volume_directories
+
+    - name: Assert the volume carries exactly the environment's subdirectories
+      vars:
+        platform_data_volume_found_paths: >-
+          {{ platform_data_volume_directories.files
+             | map(attribute='path')
+             | map('regex_replace', '^' ~ platform_data_volume_mount_path ~ '/', '')
+             | reject('match', '^lost\+found($|/)')
+             | sort }}
+      ansible.builtin.assert:
+        that:
+          - platform_data_volume_found_paths == (platform_data_volume_expected_paths | sort)
+        fail_msg: >-
+          The volume carries {{ platform_data_volume_found_paths }}; with no
+          application subdirectories declared it should carry exactly the
+          environment's {{ platform_data_volume_expected_paths | sort }}.
