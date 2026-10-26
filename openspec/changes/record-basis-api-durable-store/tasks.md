@@ -39,7 +39,7 @@
 
 ## 7. Confirm the effect
 
-- [ ] 7.1 On `main-production`: `ls -ldn /mnt/main/applications/basis-api/{postgres,metrics}` shows `999 999` with modes `0700` and `0755`; on both hosts `/mnt/main/applications/platform/metrics` exists, empty and root-owned; on `main-staging`, `/mnt/main/applications/basis-api` does not exist; neither host has `TextfileMetricsUnreadable` firing, and `node_textfile_scrape_error` reads `0` on both.
+- [x] 7.1 On `main-production`: `ls -ldn /mnt/main/applications/basis-api/{postgres,metrics}` shows `999 999` with modes `0700` and `0755`; on both hosts `/mnt/main/applications/platform/metrics` exists, empty and root-owned; on `main-staging`, `/mnt/main/applications/basis-api` does not exist; neither host has `TextfileMetricsUnreadable` firing, and `node_textfile_scrape_error` reads `0` on both.
 - [ ] 7.2 On `main-production`, as `999`, write `/mnt/main/applications/basis-api/metrics/confirm.prom` the way the contract requires — `mktemp` in that directory, `chmod 0644`, `mv` — with `backup_last_success_timestamp_seconds{store="confirm",kind="test"}` two hours old and `backup_max_age_seconds{store="confirm",kind="test"} 3600`; `BackupStale` reaches Slack naming `confirm`/`test`. Remove the max-age line; `BackupAgeUnbounded` fires. Delete the file; both resolve. Then write two files carrying the same series; `NodeExporterGatheringErrors` fires. Delete both; it resolves after its window. Then write a `0600` `.prom` file; `node_textfile_scrape_error` reads `1` and `TextfileMetricsUnreadable` reaches Slack after 15 minutes. Delete it; it resolves.
 - [ ] 7.3 Tell Basis's `move-to-durable-data-storage` that this change is in place.
 
