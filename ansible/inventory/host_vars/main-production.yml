@@ -82,6 +82,12 @@ deploy_apps:
   - name: basis-api
     public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINDKLdgm242zhB9wy9fDN0YBPR2sfG00VWPLzMZz5OeQ basis-api-deploy-main-production"
     probe_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAICpA58JRf6vLRLb4Pyzepe3FPqLE8U4sXBc6bsbB2KTe basis-api-probe-main-production"
+  # Static site for dro.psypra.com (repo Shatynska-Labs/dro.psypra, image
+  # ghcr.io/shatynska-labs/dro-psypra). It has no database; its probe key is
+  # declared anyway, as `platform`'s is, and can only answer `absent`.
+  - name: dro-psypra
+    public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJ/Q8qyJnLaxarw8AchwIQajZayH4kf7aCYbDCREaMF0 dro-psypra-deploy-main-production"
+    probe_public_key: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIL8YwILerk80PgvlFkZhbZG3d+vu36TDcIrwfBCiBIco dro-psypra-probe-main-production"
 
 # basis-api's own tree on the data volume, beneath the root-owned
 # `applications/` the environment declares (platform_data_volume_host_subdirs,
