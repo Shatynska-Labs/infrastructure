@@ -34,6 +34,7 @@
 
 - [x] 6.1 Open the pull request; let CI run; read the production plan comment against 1.4. PR #287; every check passed (validate, both plans, both discover, ansible-verify, molecule (platform_data_volume)).
 - [ ] 6.2 The operator merges, approves production's apply (expected no-op) and production's converge — before the platform deploy or within 15 minutes of it (`design.md` Migration Plan) — and confirms the platform deploy is healthy on both hosts.
+  - Blocked 2026-10-26: merge `d0c6862`'s Host Converge failed on both hosts at the `tailscale` role, before `platform_data_volume`: `apt-get install tailscale=1.102.3` refused to downgrade, so both hosts run a newer Tailscale than the role pins (Terraform Apply and Platform Deploy succeeded). Not caused by this change; every converge fails until the pin matches. Waits on that fix's own pull request and a converge that passes; until then `applications/platform/metrics` is absent and `TextfileMetricsUnreadable` is expected to fire on both hosts.
 
 ## 7. Confirm the effect
 
