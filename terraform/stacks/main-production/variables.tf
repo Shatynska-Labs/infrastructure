@@ -35,13 +35,13 @@ variable "web_allowed_cidrs" {
 }
 
 variable "server_enabled" {
-  description = "Whether the production server should exist. Set false to decommission without losing configuration — all other values here and in terraform.tfvars stay in place, ready to re-enable."
+  description = "Whether the production server should exist. Set false to decommission without losing configuration — all other values here and in terraform.tfvars stay in place, ready to re-enable. The volume is not coupled to it: with the server disabled the volume is kept, detached, and re-enabling attaches it to the new server."
   type        = bool
   default     = true
 }
 
 variable "volume_enabled" {
-  description = "Whether the production stack's volume should exist. The volume has no location of its own — it can only exist attached to the production server — so its actual effective state is volume_enabled AND server_enabled; disabling the server also removes the volume even if this stays true. Set false to detach the volume from management without losing configuration."
+  description = "Whether the production stack's volume should exist. It alone decides: the volume declares the stack's location while the server is disabled, so disabling the server detaches the volume rather than destroying it. Setting this false destroys the volume and the basis-api store on it, which delete protection refuses until lifted."
   type        = bool
   default     = true
 }

@@ -20,14 +20,17 @@ Do this before anything else. Everything below it is recoverable; the contents o
 
 **No store on this host needs a restore, and that is a classification rather than a hope.** It is *No Store on This Host Holds Data Requiring Backup* (`openspec/specs/iac-safety-hardening/spec.md`) that says so, store by store, and this document derives from it rather than restating its table — read it there if the host has gained a store since this was written. What follows is only the part a rebuild makes real.
 
+**On `main-production` the toggle route keeps the data volume, and one store on it does need a restore if the volume is ever lost.** Since `record-basis-api-durable-store`, production's volume is gated on `volume_enabled` alone and survives its server being disabled (*Conditional Prod Volume Creation*, `openspec/specs/iac-data-volumes/spec.md`), because it holds `basis-api`'s PostgreSQL store, admitted under the backup fallback of the requirement above. So on production's toggle route nothing on the volume comes back empty: the shared instance, Prometheus, Grafana and `basis-api`'s store are all still there. The losses below describe staging, and production only where the volume itself is lost — and then `basis-api`'s store is restored from Basis's own backups, in `Shatynska-Labs/basis`, before `basis-api` is deployed (phase 15).
+
 **Two stores come back empty and nothing says so at the time.** Prometheus's time-series database is gone, so every metric older than the rebuild is gone with it — the dashboards render, they are simply empty to the left of today. Grafana's UI-created state is gone too: dashboards saved or edited through Grafana's own interface, its users, its preferences and its annotations. What comes back is what this repository provisions, which is the datasource and the committed dashboards. If there is a dashboard on that host somebody built by hand and wants, **export it now**; after the next phase it is not recoverable from anywhere.
 
-**Two alarms will fire, both are expected, and neither is muted.** Say so wherever your alerts are read before you start, because the whole design of this system is that a check going quiet is as loud as one that fails:
+**Two alarms will fire on staging and three on production; all are expected, and none is muted.** Say so wherever your alerts are read before you start, because the whole design of this system is that a check going quiet is as loud as one that fails:
 
 - `main-staging-alertmanager` is the host's dead-man's-switch. It is fed by Alertmanager's Watchdog every two minutes, so it goes overdue within minutes of the server being destroyed and pages `#alerts` continuously until the platform stack is running again on the rebuilt host — tens of minutes, not minutes. This is the alarm for when everything is down, and during a rebuild everything is in fact down.
 - `main-staging-prune-host-images` goes red and stays red until phase 13 triggers an activation by hand. It does not clear on its own.
+- **On `main-production` only**, `BackupStale` may fire once the platform stack is back: `basis-api`'s backup metrics files kept aging while the host was down, and it clears at the next successful backup of each kind. If it does not clear, the backups have not resumed, which is a real fault.
 
-Do not mute either. A check muted for a rebuild is one nobody re-arms, and an unarmed dead-man's-switch is the failure this entire mechanism exists to prevent.
+Do not mute any of them. A check muted for a rebuild is one nobody re-arms, and an unarmed dead-man's-switch is the failure this entire mechanism exists to prevent.
 
 **Expect the host key to be rejected three separate times later, and know now that it is not a fault.** A rebuilt host is a new machine presenting a new key on every identity you reach it by, and each one fails only when that identity is first used — spread across phases 7, 8 and 10, which is why it otherwise reads as three unrelated problems:
 
@@ -113,7 +116,9 @@ server_enabled = false
 
 **Read the plan comment before merging.** It should destroy exactly three things — the server, its firewall, and the volume — and leave `hcloud_ssh_key.this` alone, which is not gated on the toggle and is deliberately owned by the stack so that it outlives the server. Record the whole plan summary rather than only those three.
 
-**The volume goes with the server on this route**, and that is the answer for the toggle route specifically: the volume has no location of its own, so its `count` depends on both toggles. A *replace* of the server is a different question — the volume's count does not turn on the server's identity, so a replace leaves it as an attachment whose `server_id` changes — and nothing in this repository has observed that route. Do not read the toggle's answer across to it.
+**On `main-production` the plan destroys two things, not three** — the server and its firewall — and leaves the volume, detached and kept, with `hcloud_ssh_key.this`. Its volume no longer depends on the server toggle (see phase 1). A production plan that destroys or replaces the volume is wrong: stop.
+
+**On `main-staging` the volume goes with the server on this route**, and that is the answer for the toggle route specifically: the volume has no location of its own, so its `count` depends on both toggles. A *replace* of the server is a different question — the volume's count does not turn on the server's identity, so a replace leaves it as an attachment whose `server_id` changes — and nothing in this repository has observed that route. Do not read the toggle's answer across to it.
 
 **A red check on this pull request is worth reading twice before you act on it.** `validate` initialises and validates *every* stack, not only the one you touched, so it can fail on a registry timeout against a stack this change does not go near — `could not connect to registry.terraform.io: read: connection reset by peer` is what that looks like. Check which stack the failure names: one you did not touch is the registry, and a re-run of the failed job is the whole remedy. This is the pull request whose merge destroys a host, so it is the worst one to misread as "something about my change is wrong".
 
@@ -140,7 +145,7 @@ cd ansible && ansible-inventory -i inventory/main-staging.hcloud.yml --list | \
   python3 -c 'import json,sys; print(json.load(sys.stdin)["_meta"]["hostvars"]["main-staging"]["hcloud_ipv4"])'
 ```
 
-The volume id is in the apply run's log, or in the Hetzner console. Re-enabling needs no configuration to be reconstructed. If the plan wants to create anything you did not expect, or wants to re-import a key, stop and read it rather than approving.
+The volume id is in the apply run's log, or in the Hetzner console. **On `main-production` there is no new volume**: the apply attaches the kept one to the new server in place, its id is unchanged, and the converge mounts its existing filesystem without formatting it. A production plan that replaces the volume is wrong: stop. Re-enabling needs no configuration to be reconstructed. If the plan wants to create anything you did not expect, or wants to re-import a key, stop and read it rather than approving.
 
 ## 5. Point the DNS at the new address
 
@@ -283,7 +288,7 @@ ssh shatynska-main-staging 'docker ps --format "{{.Names}}\t{{.Status}}"'
 
 **Credential:** the operator inspection key, held in `~/.ssh`, to reach the host — and nothing you have to look up. The values this step needs are `PLATFORM_POSTGRES_USER` and `PLATFORM_POSTGRES_EXPORTER_PASSWORD`, whose canonical home is the password manager since an Environment secret cannot be read back; but the running exporter already holds the second, which is how `platform/README.md` has you take it.
 
-The shared instance came back empty, so the monitoring role it holds came back with it. Both steps are `platform/README.md`'s, under *Monitoring and alerting*, and are performed from there rather than copied here. What matters at this point in the sequence:
+The shared instance came back empty, so the monitoring role it holds came back with it. **On `main-production`'s toggle route it did not** — the volume was kept — so `pgexporter` still exists: check `pg_up 1` and skip its recreation. Both steps are `platform/README.md`'s, under *Monitoring and alerting*, and are performed from there rather than copied here. What matters at this point in the sequence:
 
 **You do not need to fetch the password.** `platform/README.md` gives the form that reads it from the exporter container, which is already running with that stack's value and is the authoritative copy — so the secret is never fetched, pasted or mistyped. Use that, and do not paste a password into this shell.
 
@@ -324,6 +329,8 @@ Read that journal as `root`. The unprivileged inspection account is in `docker` 
 
 **Credential:** the operator key held in `~/.ssh`, and `gh`'s token on your workstation.
 
+**On `main-production`'s toggle route this phase is empty**: the volume was kept, so the shared instance, its roles and its databases survived, and rotating a password here would only break the next deploy until its Environment secret matched again. What follows applies to staging, and to production only where the volume was lost.
+
 The shared PostgreSQL instance came back empty. Every application holding a database in it lost that database — which its classification tolerates — but it cannot start without one, so this comes **before** that application's deploy and not after.
 
 Use the provisioning recipe in `docs/onboard-an-application.md`, which is where it lives and where it is maintained. Two things about using it here rather than at onboarding:
@@ -350,6 +357,8 @@ gh run rerun <id> --repo <org>/<app>
 
 **If the last run is too old to re-run**, GitHub having dropped that ability with the run's logs, the remaining route is a push to that repository's `main` — and the two conditions correlate, since a host rebuilt after a long quiet period is one whose last deploy is old. The obligation is unchanged either way: this phase is that application's to satisfy, and this document can only say that it is owed.
 
+**On `main-production` after a lost volume, restore `basis-api`'s store before deploying `basis-api`**, from Basis's own backups and by Basis's own written procedure, in `Shatynska-Labs/basis`. A deploy onto the empty `applications/basis-api/postgres` starts a fresh empty cluster, and backups taken from it then age out the good ones.
+
 If a deploy fails at connection time, phase 9's `DEPLOY_HOST` is the first thing to check. If it starts and then fails against the database, phase 14 either did not run for that application or its rotation half-completed — the recipe's own failure section covers that case.
 
 ## 16. Confirm the host is serving what it served before
@@ -367,7 +376,8 @@ ssh shatynska-main-staging 'docker ps --format "{{.Names}}\t{{.Status}}"'
 - the same containers are running and healthy, eight of them from the platform stack plus each application's own;
 - all five scrape targets report `up`;
 - both checks at the observer are green, on the settings phase 12 confirmed;
-- the applications answer, and their data is what phase 14 and phase 15 put back — which for an application whose database was re-provisioned means empty, by design.
+- the applications answer, and their data is what phase 14 and phase 15 put back — which for an application whose database was re-provisioned means empty, by design. On `main-production`'s toggle route nothing was re-provisioned and the data is what it was before.
+- on `main-production`, `BackupStale` has cleared for every kind of `basis-api` backup.
 
 A host that is up and serving nothing it served before has not finished this sequence.
 

@@ -85,6 +85,14 @@ ops_user_accounts:
 # directory as root (move-the-shared-database-onto-the-data-volume). `0755`
 # rather than the `1777` that image sets in its own filesystem: that mode
 # exists so it can run as an arbitrary uid, which this stack does not do.
+#
+# `applications/` holds each application's own tree, which a host's own
+# host_vars declares (platform_data_volume_host_subdirs). The empty, root-owned
+# `applications/platform/metrics` is here on every host because node-exporter's
+# textfile collector globs `applications/*/metrics`, and a glob matching
+# nothing is reported as a read error (`node_textfile_scrape_error 1`,
+# measured against v1.12.1) that would hold TextfileMetricsUnreadable firing
+# (record-basis-api-durable-store).
 platform_data_volume_subdirs:
   - path: prometheus
     owner: "65534"
@@ -97,6 +105,18 @@ platform_data_volume_subdirs:
   - path: postgres
     owner: "999"
     group: "999"
+    mode: "0755"
+  - path: applications
+    owner: root
+    group: root
+    mode: "0755"
+  - path: applications/platform
+    owner: root
+    group: root
+    mode: "0755"
+  - path: applications/platform/metrics
+    owner: root
+    group: root
     mode: "0755"
 
 # The path this volume used to be mounted at, removed from /etc/fstab so the

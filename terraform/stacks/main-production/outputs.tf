@@ -9,7 +9,7 @@ output "server_ipv4_address" {
 }
 
 output "volume_id" {
-  description = "ID of the production stack's volume, or null if volume_enabled is false (or server_enabled is false, since the volume can't exist without the server)."
+  description = "ID of the production stack's volume, or null if volume_enabled is false. The volume outlives a disabled server."
   value       = one(module.volume[*].id)
 }
 

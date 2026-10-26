@@ -1,0 +1,73 @@
+---
+# Scenario: An application's subdirectories exist on the host it is declared
+# for -- iac-host-configuration, *Platform Data Volume Is Mounted at a Fixed
+# Host Path* (openspec/specs/iac-host-configuration/spec.md), as the change
+# record-basis-api-durable-store restates it. Written before that change's
+# implementation existed; see its test-plan.md.
+#
+# The role is given BOTH lists: the environment's own
+# (`platform_data_volume_subdirs`, which group_vars supplies on a real host) and
+# the host-scoped one (`platform_data_volume_host_subdirs`, which a host's own
+# host_vars file supplies). The second variable's name is design.md decision 4
+# and tasks.md 2.1, not the requirement's -- an interface assumption recorded in
+# test-plan.md.
+#
+# The entries mirror what design.md decision 4 gives main-production
+# (`applications/basis-api/{postgres,metrics}` at 999:999), because 999 does not
+# resolve to a name inside this image, which is the case the requirement is
+# about: ownership a container needs, by id.
+- name: Converge
+  hosts: all
+  become: true
+  vars:
+    # Offset 7 of the sixteen minors this working tree claims -- derived exactly
+    # as prepare.yml derives it.
+    platform_data_volume_fixture_loop_base: "{{ lookup('env', 'INFRA_WORKTREE_LOOP_BASE') }}"
+    platform_data_volume_fixture_loop_minor: "{{ platform_data_volume_fixture_loop_base | int + 7 }}"
+    platform_data_volume_device: /dev/loop{{ platform_data_volume_fixture_loop_minor }}
+    platform_data_volume_mount_path: /mnt/main
+    platform_data_volume_fs_type: ext4
+    platform_data_volume_subdirs:
+      - path: prometheus
+        owner: "65534"
+        group: "65534"
+        mode: "0755"
+      - path: applications
+        owner: root
+        group: root
+        mode: "0755"
+      - path: applications/platform
+        owner: root
+        group: root
+        mode: "0755"
+      - path: applications/platform/metrics
+        owner: root
+        group: root
+        mode: "0755"
+    platform_data_volume_host_subdirs:
+      - path: applications/basis-api
+        owner: root
+        group: root
+        mode: "0755"
+      - path: applications/basis-api/postgres
+        owner: "999"
+        group: "999"
+        mode: "0700"
+      - path: applications/basis-api/metrics
+        owner: "999"
+        group: "999"
+        mode: "0755"
+  pre_tasks:
+    - name: Refuse to run without this working tree's loop-minor base
+      ansible.builtin.assert:
+        that:
+          - platform_data_volume_fixture_loop_base is match('^[0-9]+$')
+          - platform_data_volume_fixture_loop_base | int >= 1024
+        fail_msg: >-
+          INFRA_WORKTREE_LOOP_BASE is unset or is not a loop-minor base
+          (read as '{{ platform_data_volume_fixture_loop_base }}'). Run the
+          suite through ansible/scripts/run-molecule, which derives it from
+          this working tree's own path -- see AGENTS.md, "Namespacing Molecule
+          per working tree".
+  roles:
+    - role: platform_data_volume
