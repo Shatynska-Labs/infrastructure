@@ -635,20 +635,6 @@ The section also asserts nothing about two properties of `.github/workflows/pre-
 
 **Re-checked**: 2026-10-19.
 
-## `assert-every-role-has-a-mock-roles-entry`
-
-`.ansible-lint`'s `mock_roles:` hand-lists every role referenced by name, because ansible-lint does not resolve roles through `ansible/ansible.cfg`'s `roles_path`. Nothing asserts the list is complete. A new role under `ansible/roles/` used from `ansible/playbooks/host-baseline.yml` without an entry fails ansible-lint twice (playbook and the role's own `converge.yml`) with a misleading "role not found" naming a search path, which sends the time to the wrong file (observed 2026-09-08 adding `swap`). The cost lands on whoever adds the next role. The check is a static read for `.github/tests`: role directories under `ansible/roles/` minus the gitignored external role, against `mock_roles`. It has the same shape as the "every lockfile-bearing directory is covered" check. The list is complete today.
-
-**Kind**: `fix`. A static assertion with no delta or decision.
-
-**Waits on**: `nothing`.
-
-**Design with**: `nothing`.
-
-**Recorded by**: `bound-host-log-growth-and-add-swap`, which hit the gap and added its missing entry; asserting the invariant was a different concern from that change's subject.
-
-**Re-checked**: 2026-10-19.
-
 ## `assert-every-tfvars-assigns-its-required-variables`
 
 Nothing checks that each stack's `terraform.tfvars` assigns every variable its `variables.tf` declares without a `default`. A gap surfaces only at plan time: `pr-validation.yml`, `apply.yml` and `drift.yml` run with `-input=false`, so the plan fails `No value for required variable`, the required check fails, and the nightly drift sweep fails every night and takes the shared heartbeat with it. Detecting it that way needs a credential, a workspace and a network. The same fact is a static read for `.github/tests`; the only real work is a small parser of `variable` blocks and `.tfvars` assignments without HCL machinery the suite does not have. `.github/tests/test_a_second_environment.py` already reads `terraform.tfvars` and can lend its approach. Both stacks currently assign `server_type`.
@@ -945,7 +931,7 @@ The `.github/tests` suite has no shared test arrangement: several modules import
 
 ## `move-the-backlog-into-entry-files`
 
-Convert `docs/backlog.md` into `docs/backlog/`, one file per entry with YAML frontmatter, the shape ai-toolkit's development workflow v12 and its `backlog` skill now read, using ai-toolkit's `scripts/backlog-migrate`. The conversion itself is mechanical. What is not mechanical is the file's path, which this repository has made load-bearing: two requirements, *iac-host-configuration* and *iac-platform-services*, cite entries as "tracked in `docs/backlog.md`"; `.github/tests/` parses that phrase and reads the file (`test_the_shared_instance_has_its_first_database.py`, `test_a_deploy_key_is_bound_to_one_host.py`, and others); and the workflows, `dependabot.yml` and most `.github/tests/` modules name the path, mostly as a docs-only path filter or exemption. A first attempt that converted the file alone failed `validate`. Must not undo the `assert-every-role-has-a-mock-roles-entry` rename, which the converter needs, since it refuses a name holding `_`.
+Convert `docs/backlog.md` into `docs/backlog/`, one file per entry with YAML frontmatter, the shape ai-toolkit's development workflow v12 and its `backlog` skill now read, using ai-toolkit's `scripts/backlog-migrate`. The conversion itself is mechanical. What is not mechanical is the file's path, which this repository has made load-bearing: two requirements, *iac-host-configuration* and *iac-platform-services*, cite entries as "tracked in `docs/backlog.md`"; `.github/tests/` parses that phrase and reads the file (`test_the_shared_instance_has_its_first_database.py`, `test_a_deploy_key_is_bound_to_one_host.py`, and others); and the workflows, `dependabot.yml` and most `.github/tests/` modules name the path, mostly as a docs-only path filter or exemption. A first attempt that converted the file alone failed `validate`.
 
 **Kind**: `change`. It owes MODIFIED deltas on the two requirements that cite `docs/backlog.md`, and test updates, beside the conversion and the workflow block's move to v12.
 
