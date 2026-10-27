@@ -23,7 +23,9 @@ This suite carries no HCL library, so the read is lexical: a `variable "<name>"`
 block, delimited by brace depth with quoted strings and comments skipped, is
 required when no `default` attribute sits at its top level; an assignment is a
 top-level `<name> =` line. It is enough for the shapes the stacks use and is
-exercised against a fixture below.
+exercised against a fixture below. The shapes it cannot read -- a heredoc, a
+`/* */` comment, an unquoted block label -- are refused by name rather than
+read wrongly, since each could make a gap pass.
 
 Runner:
 
@@ -37,13 +39,40 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_terraform_stacks_are_the_iterated_unit import (
-    stack_directories,
-    stack_terraform_text,
-)
+ROOT = Path(__file__).resolve().parents[2]
+STACKS = ROOT / "terraform" / "stacks"
 
 VARIABLE_OPENING = re.compile(r'^\s*variable\s+"([^"]+)"\s*\{')
 ATTRIBUTE = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_-]*)\s*=")
+UNREADABLE = re.compile(r"<<|/\*|^\s*variable\s+[A-Za-z_]", re.MULTILINE)
+
+
+def stack_directories() -> list[Path]:
+    """Every stack directory under `terraform/stacks/`."""
+    if not STACKS.is_dir():
+        return []
+    return sorted(
+        entry for entry in STACKS.iterdir() if entry.is_dir() and not entry.name.startswith(".")
+    )
+
+
+def stack_terraform_text(directory: Path) -> str:
+    """Every `.tf` file in a stack directory, concatenated."""
+    return "\n".join(
+        path.read_text(encoding="utf-8") for path in sorted(directory.glob("*.tf"))
+    )
+
+
+def refuse_what_cannot_be_read(text: str, source: str) -> None:
+    """Raise where `text` holds a shape the lexical read would misread."""
+    found = UNREADABLE.search(text)
+    if found:
+        line = text.count("\n", 0, found.start()) + 1
+        raise AssertionError(
+            f"{source}:{line} holds `{found.group(0).strip()}`, a heredoc, block "
+            f"comment or unquoted label this module's lexical HCL read cannot "
+            f"follow; extend the parser before trusting its verdict"
+        )
 
 
 def _code(line: str) -> str:
@@ -115,8 +144,11 @@ def assigned_variables(tfvars: str) -> set[str]:
 def unassigned_required_variables(directory: Path) -> list[str]:
     """The stack's required variables its `terraform.tfvars` does not assign."""
     tfvars = directory / "terraform.tfvars"
-    assigned = assigned_variables(tfvars.read_text(encoding="utf-8")) if tfvars.is_file() else set()
-    return sorted(required_variables(stack_terraform_text(directory)) - assigned)
+    tfvars_text = tfvars.read_text(encoding="utf-8") if tfvars.is_file() else ""
+    terraform = stack_terraform_text(directory)
+    refuse_what_cannot_be_read(terraform, f"{directory.name}/*.tf")
+    refuse_what_cannot_be_read(tfvars_text, f"{directory.name}/terraform.tfvars")
+    return sorted(required_variables(terraform) - assigned_variables(tfvars_text))
 
 
 class TestEveryTfvarsAssignsItsRequiredVariables(unittest.TestCase):
@@ -201,6 +233,16 @@ class TestTheParserReadsWhatItClaimsTo(unittest.TestCase):
             (directory / "variables.tf").write_text(self.TERRAFORM, encoding="utf-8")
             (directory / "terraform.tfvars").write_text('plain = "a"\n', encoding="utf-8")
             self.assertEqual(["validated"], unassigned_required_variables(directory))
+
+    def test_shapes_the_read_cannot_follow_are_refused(self) -> None:
+        for text in (
+            'variable "a" {\n  description = <<-EOT\n  default = 1\n  EOT\n}\n',
+            '/* variable "a" { default = 1 } */\n',
+            "variable a {\n}\n",
+        ):
+            with self.subTest(text=text):
+                with self.assertRaises(AssertionError):
+                    refuse_what_cannot_be_read(text, "fixture")
 
 
 if __name__ == "__main__":
