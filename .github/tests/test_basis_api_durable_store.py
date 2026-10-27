@@ -113,7 +113,7 @@ PLATFORM_METRICS_DIR = "applications/platform/metrics"
 
 ONBOARDING = "docs/onboard-an-application.md"
 RUNBOOK = "docs/runbook-rebuild.md"
-BACKLOG = "docs/backlog.md"
+BACKLOG = "docs/backlog"
 BACKLOG_ENTRY = "finish-basis-api-s-move-to-its-own-database"
 RETIRED_ONBOARDING_SENTENCE = "no application has cleared that bar"
 
@@ -1224,8 +1224,11 @@ def runbook_offences(text: str) -> list[str]:
     return offences
 
 
-def backlog_offences(text: str) -> list[str]:
-    return [] if BACKLOG_ENTRY in text else [f"carries no entry {BACKLOG_ENTRY!r}"]
+def backlog_offences(backlog: Path) -> list[str]:
+    """One file per entry, so the entry's own file is the entry, and a mention
+    of its name inside another entry is not."""
+    entry = backlog / f"{BACKLOG_ENTRY}.md"
+    return [] if entry.is_file() else [f"carries no entry {BACKLOG_ENTRY!r}"]
 
 
 class TestTheDocumentsRecordTheStore(unittest.TestCase):
@@ -1247,7 +1250,7 @@ class TestTheDocumentsRecordTheStore(unittest.TestCase):
 
     def test_the_backlog_carries_the_follow_up(self) -> None:
         """DERIVED -- tasks.md 4.3 and proposal.md's "Backlog" item."""
-        self.assertEqual([], backlog_offences(read_required(ROOT / BACKLOG)))
+        self.assertEqual([], backlog_offences(ROOT / BACKLOG))
 
 
 class TestTheDocumentChecksDiscriminate(unittest.TestCase):
@@ -1259,7 +1262,9 @@ class TestTheDocumentChecksDiscriminate(unittest.TestCase):
     def test_good_documents_are_accepted(self) -> None:
         self.assertEqual([], onboarding_offences(self.GOOD_ONBOARDING))
         self.assertEqual([], runbook_offences("expect BackupStale; restore basis-api's store"))
-        self.assertEqual([], backlog_offences(f"### `{BACKLOG_ENTRY}`\n"))
+        with tempfile.TemporaryDirectory() as backlog:
+            (Path(backlog) / f"{BACKLOG_ENTRY}.md").write_text("---\nkind: change\n---\n")
+            self.assertEqual([], backlog_offences(Path(backlog)))
 
     def test_the_retired_sentence_is_reported_across_a_line_break(self) -> None:
         text = self.GOOD_ONBOARDING + "So far no application\nhas cleared that bar.\n"
@@ -1272,7 +1277,11 @@ class TestTheDocumentChecksDiscriminate(unittest.TestCase):
         self.assertNotEqual([], runbook_offences("restore basis-api's store\n"))
 
     def test_a_backlog_without_the_entry_is_reported(self) -> None:
-        self.assertNotEqual([], backlog_offences("### `finish-something-else`\n"))
+        with tempfile.TemporaryDirectory() as backlog:
+            (Path(backlog) / "finish-something-else.md").write_text(
+                f"Follows `{BACKLOG_ENTRY}`.\n"
+            )
+            self.assertNotEqual([], backlog_offences(Path(backlog)))
 
 
 if __name__ == "__main__":

@@ -129,7 +129,7 @@ from test_a_stack_and_its_environment_are_named_separately import (
     stack_names,
     stack_tfvars,
 )
-from test_ci_configuration import ROOT, read_text
+from test_ci_configuration import ROOT
 from test_environment_agnostic_pipeline import (
     TARGET_GROUP_KEY_HINT,
     environment_declarations,
@@ -198,12 +198,12 @@ UNMET_PLACEMENTS = (
 )
 
 # The backlog entry the ADDED requirement cites by name: "they are tracked in
-# `docs/backlog.md` as `put-the-remaining-host-scoped-variables-on-the-host-
+# `docs/backlog/` as `put-the-remaining-host-scoped-variables-on-the-host-
 # axis`". SPECIFIED -- the requirement states the name, and a citation of a name
 # nothing carries is the failure the requirement's own paragraph exists to
 # avoid.
-BACKLOG = ROOT / "docs" / "backlog.md"
 BACKLOG_ENTRY = "put-the-remaining-host-scoped-variables-on-the-host-axis"
+BACKLOG = ROOT / "docs" / "backlog" / f"{BACKLOG_ENTRY}.md"
 
 # The two roles whose refusal message tells an operator where to set the
 # variable. DERIVED -- no scenario states a message, and the ADDED requirement
@@ -823,20 +823,18 @@ class TestTheUnmetPlacementsAreTheOnesTheRequirementNames(unittest.TestCase):
         )
 
     def test_the_backlog_entry_the_requirement_cites_exists(self) -> None:
-        """SPECIFIED -- "they are tracked in `docs/backlog.md` as
+        """SPECIFIED -- "they are tracked in `docs/backlog/` as
         `put-the-remaining-host-scoped-variables-on-the-host-axis`". The
         requirement states the name, so the two have to agree; a citation of an
         entry nothing carries is the deferral recorded nowhere.
 
         RED until the change lands -- that change's tasks.md 5.1 adds the entry.
         """
-        self.assertTrue(BACKLOG.is_file(), f"{BACKLOG} does not exist")
-        self.assertIn(
-            BACKLOG_ENTRY,
-            read_text(BACKLOG),
-            f"docs/backlog.md carries no entry named {BACKLOG_ENTRY!r}, which the "
-            "requirement cites as where the three placements it does not correct are "
-            "tracked",
+        self.assertTrue(
+            BACKLOG.is_file(),
+            f"{BACKLOG.relative_to(ROOT)} does not exist, so docs/backlog/ carries no "
+            f"entry named {BACKLOG_ENTRY!r}, which the requirement cites as where the "
+            "three placements it does not correct are tracked",
         )
 
 
