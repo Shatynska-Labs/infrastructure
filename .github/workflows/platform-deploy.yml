@@ -117,7 +117,7 @@ jobs:
       # share with them is the `field()` reader, the control-character
       # refusal, the empty-result refusal and the JSON emission -- the overlap
       # is idiom rather than accident. Five near-siblings now exist where the
-      # decision to keep three was taken; docs/backlog.md carries the entry
+      # decision to keep three was taken; docs/backlog/ carries the entry
       # that would collapse them.
       - name: Discover the stacks the platform stack is deployed to
         id: discover
@@ -498,7 +498,7 @@ jobs:
       # The first two corrupt instead, and a corrupted credential is not loud:
       # the service starts, reports healthy, and fails only at whatever it
       # needed the credential for. postgres-exporter spent an unknown period in
-      # exactly that state -- see docs/backlog.md
+      # exactly that state -- see docs/backlog/
       # `alert-on-the-exporter-being-unable-to-read-postgres`.
       #
       # THIS STEP CLOSES THE SHELL, AND THE `render` HELPER BELOW CLOSES THE
@@ -530,7 +530,7 @@ jobs:
       # THE OBLIGATION STOPS AT THE PARSER. Two of these values are afterwards
       # interpolated into the content of an embedded Alertmanager YAML config
       # and one into a Traefik `command:` argument; nothing here escapes for
-      # those contexts. See the requirement and `docs/backlog.md`.
+      # those contexts. See the requirement and `docs/backlog/`.
       #
       # WHAT THE SHELL LAYER BOUGHT, KEPT HERE BECAUSE IT IS STILL TRUE AND IS
       # WHY THE `env:` BLOCK EXISTS. This step once rendered with

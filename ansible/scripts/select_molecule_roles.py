@@ -368,7 +368,7 @@ def role_directories(root: Path) -> set[str]:
     across both trees, which is what the requirement asks for and what the
     agreement test in that suite holds this to. It is NOT the rule the
     workflow's own shell discovery uses: that is a third implementation, still
-    reading the directory name, and `docs/backlog.md` carries the entry for it.
+    reading the directory name, and `docs/backlog/` carries the entry for it.
     """
     directory = Path(root) / ROLES_DIRECTORY
     if not directory.is_dir():

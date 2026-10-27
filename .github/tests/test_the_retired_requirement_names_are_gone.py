@@ -61,7 +61,7 @@ pre-archive-citation assertion's subject, the second is nobody's.
 
 It also does not read **scenario** titles, and that hole is deliberate and
 recorded: thirty citations in this tree name a scenario no specification holds,
-which is a different predicate over a different set. `docs/backlog.md`
+which is a different predicate over a different set. `docs/backlog/`
 carries the entry that would close it by extending this module.
 
 A green run is therefore evidence that the repository was swept of retired
@@ -184,7 +184,7 @@ def _named_spans(text: str) -> list[str]:
 #       nothing to do with why it was exempt. The measurement recorded with that
 #       exemption -- that the file cited 17 live requirement names, an unread
 #       citation surface of the same order as `.github/tests/` -- is now moot,
-#       and the promoted entries in `docs/backlog.md` are swept like anything
+#       and the promoted entries in `docs/backlog/` are swept like anything
 #       else. Any requirement name they carry must be a live one.
 #
 #   `docs/change-queue.md` WAS EXEMPT AND IS NOT ANY MORE, which is the expiry
@@ -193,8 +193,8 @@ def _named_spans(text: str) -> list[str]:
 #       for, and a queue entry is deleted only when its change archives -- so the
 #       file was exempt across that change's life and no longer. Deleting the
 #       entry turned `TestEveryExemptionStillExcusesSomething` red, and the
-#       repair was to delete the exemption in the same commit. Its successor
-#       `docs/backlog.md` is swept from here on.
+#       repair was to delete the exemption in the same commit. Its successor,
+#       now `docs/backlog/`, is swept from here on.
 #
 # `.github/tests/` IS NOT EXEMPT, and that is the decision this module exists to
 # hold. The sibling sweep exempts it wholesale, for two reasons of which only one
@@ -500,7 +500,7 @@ def idle_exemptions(
     It asks the SAME question the sweep asks, through the same finder, and that
     is load-bearing rather than tidy. A bare substring test answers "still
     needed" for a file whose only match is a retired name sitting inside a
-    longer live one -- `docs/backlog.md` cites *Ansible Configuration Is
+    longer live one -- `docs/backlog/` cites *Ansible Configuration Is
     Verified in Continuous Integration and Gates the Merge*, which contains a
     retired name as its prefix. Under a bare test that citation alone would keep
     the exemption looking alive after the thing it was written for had gone, and

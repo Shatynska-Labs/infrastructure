@@ -292,7 +292,7 @@ services:
       # pg_exporter_last_scrape_error 1, container healthy, no alert. So a
       # mistyped POSTGRES_EXPORTER_PASSWORD leaves PostgreSQL's metrics silently
       # absent. pg_up is what would catch it and nothing alerts on it yet --
-      # docs/backlog.md `alert-on-the-exporter-being-unable-to-read-postgres`.
+      # docs/backlog/ `alert-on-the-exporter-being-unable-to-read-postgres`.
       # Until that lands it is checked by hand, by the command in README.md's
       # "Upgrading the PostgreSQL major version".
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:9187/metrics"]
@@ -370,7 +370,7 @@ services:
       # alertmanager_config alone, so editing the routing tree replaces this
       # container and nothing else. Regenerate it when that config changes; the
       # static check names the correct value.
-      platform.config-checksum: "23ee71e2892b"
+      platform.config-checksum: "c253f0e07abf"
     command:
       - --config.file=/etc/alertmanager/alertmanager.yml
     configs:
@@ -410,7 +410,7 @@ services:
       # inline config's content -- with the new value in it, and leaves
       # Grafana accepting the old one, green throughout. The host step that
       # completes a rotation is in docs/bootstrap-a-new-host.md Appendix A;
-      # docs/backlog.md `make-a-rotated-grafana-password-reach-grafana` is
+      # docs/backlog/ `make-a-rotated-grafana-password-reach-grafana` is
       # the change that would remove it.
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
       # The base URL Grafana builds its own links and redirects from, so it
@@ -787,7 +787,7 @@ configs:
         # text nor the label, and `up -d --wait` leaves the container running
         # on the old value -- reporting success. Editing this block is what
         # applies a rotation, because it moves the checksum. See
-        # docs/backlog.md `make-a-rotated-secret-reach-its-inline-config`.
+        # docs/backlog/ `make-a-rotated-secret-reach-its-inline-config`.
         - name: deadmansswitch
           webhook_configs:
             - url: ${DEADMANSWITCH_URL}

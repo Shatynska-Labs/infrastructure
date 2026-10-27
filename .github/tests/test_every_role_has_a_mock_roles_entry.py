@@ -1,6 +1,6 @@
 """Every role this repository owns is listed in `.ansible-lint`'s `mock_roles`.
 
-Written for `docs/backlog.md`'s `assert-every-role-has-a-mock-roles-entry`,
+Written for the backlog entry `assert-every-role-has-a-mock-roles-entry`,
 taken as a fix.
 
 ansible-lint does not resolve a role referenced by name through
@@ -36,7 +36,7 @@ def mock_roles(path: Path = ANSIBLE_LINT_CONFIG) -> set[str]:
 
 
 class TestEveryRoleHasAMockRolesEntry(unittest.TestCase):
-    """`docs/backlog.md`'s `assert-every-role-has-a-mock-roles-entry`, taken as a fix."""
+    """The backlog entry `assert-every-role-has-a-mock-roles-entry`, taken as a fix."""
 
     def test_the_repository_has_roles_to_check(self) -> None:
         """The vacuity guard: the assertion below passes over an empty role
