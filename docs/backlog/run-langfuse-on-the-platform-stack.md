@@ -1,0 +1,20 @@
+---
+priority: parked
+parked_until: "an application on these hosts needs a shared prompt playground or trace store: commerce-ops, which asked for one, was removed from both hosts (remove-commerce-ops-from-staging, remove-commerce-ops-from-production), and Basis uses Langfuse for evaluation but only on a developer machine today"
+kind: change
+waits_on: []
+design_with: [size-platform-container-resource-limits]
+workstream: none
+recorded_by: "a commerce-ops exploration of where its LangGraph prompts are tuned (2026-09-15), opened as a change with a handoff on a local branch that was never pushed; converted to this entry on 2026-10-27"
+re_checked: 2026-10-27
+---
+
+Run a self-hosted Langfuse as a platform service in `platform/docker-compose.yml`, so a few named people can read an application's prompts, fill their variables, run a model and iterate on wording without touching the repository or affecting production. It is a playground and trace store, **not** a prompt store production reads: Git stays the source of truth, the application never fetches a prompt at runtime, and a wording found there reaches the repository by pull request. It is third-party software consumed as an image, shared rather than owned by one application, so it is a platform service here rather than a repository of its own, and inherits the shared-stack obligations: a real healthcheck, an exactly pinned image, no committed secret.
+
+*No Store on This Host Holds Data Requiring Backup* (`iac-safety-hardening`) decides its shape, so read it and *Single Shared PostgreSQL Instance, Per-Application Databases* (`iac-platform-services`) before writing a service definition. Langfuse persists in several stores (relational, analytical, cache, blob; verify the set against the pinned release), each needing a stated reason. Traces can claim a retention the service enforces on itself, if that is configurable on a self-hosted deployment. The relational store forks the change: if its loss is tolerable it goes in a database in the shared instance and Langfuse brings no PostgreSQL of its own; if not, it is Langfuse Cloud, or an off-host backup with a rehearsed restore built before data lands, as `basis-api`'s store was (`record-basis-api-durable-store`). It can claim *derived from a source that still exists* only once the consuming application publishes its prompts to Langfuse from CI on every merge; until then prompt drafts, users and API keys need a recorded non-durability policy, in the shape of Grafana's for UI-created state.
+
+**Must not**: put durable data in the shared instance; bring an unclassified PostgreSQL of its own; reuse an application's database, role or model-provider key (a shared web UI gets its own key with its own spend limit); be reachable wider than its users (Grafana, on a literal tailnet address and not behind Traefik, is the precedent for a private service); go unmonitored. Its footprint, an analytical store, a cache and blob storage, outweighs every service in the stack today, which is why it designs with `size-platform-container-resource-limits`.
+
+- **Kind**: It owes the store statements *No Store on This Host Holds Data Requiring Backup* requires of a store added later, and a delta if it adds a non-durability policy. It needs the operator's decisions on self-hosting against Langfuse Cloud (data residency and seat cost against the classification, footprint and upgrades), the host, reachability (tailnet if the users are on it, otherwise a public hostname under the wildcard behind Traefik with real authentication), and the resource budget.
+- **Priority**: Parked because its only consumer is gone. `commerce-ops`'s two LangGraph step handlers were the prompts to tune, and it no longer runs on either host.
+- **Recorded by**: The handoff, written in the `commerce-ops` exploration, lived only on an unpushed local branch, `run-langfuse-on-the-platform-stack`; its substance is here and the branch is removed. The provisioning recipe's defects it pointed to are in `provision-commerce-ops-database-in-the-shared-instance`'s archived record.
