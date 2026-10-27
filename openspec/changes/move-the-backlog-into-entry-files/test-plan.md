@@ -124,4 +124,4 @@ The dispatch named no shared arrangement, and AGENTS.md "Testing" states the sui
 | `NEW_FORM_BLOCK`, `OLD_FORM_BLOCK`, `PATH_FORM_BLOCK`, `_main`, `_delta`, `MAIN_SPEC`, `LIVE_DELTA`, `OTHER_LIVE_DELTA`, `ARCHIVED_DELTA` | Spec/delta fixtures | `TestTheCitationDetectorFires.*`, `TestTheRequirementIsReadWhereItIsAboutToStand.*`, `TestTheOldPathGuardFires.*`, `TestTheOldFileCheckFires.*` | n/a | Shape adapted from `CONFORMING_REQUIREMENT_FIXTURE` in `test_the_shared_instance_has_its_first_database.py` |
 | `TestTheConventionDetectorsFire.AGENTS` | AGENTS.md fixture | `TestTheConventionDetectorsFire.*` | n/a | not found elsewhere |
 
-Disposition (for `apply`): keep local, per AGENTS.md "Testing" — the suite has no shared arrangement to promote into.
+Disposition: every entry above **kept** local. Reason: AGENTS.md "Testing" records that this suite has no shared test arrangement, so there is nothing to promote into; creating one is `share-the-static-suites-test-arrangement`.

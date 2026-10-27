@@ -21,8 +21,8 @@ What this file reads, and why each is a static read
 - **The requirement's own text**, for the scenario "The automation trigger has
   fired and the mechanism is not built", whose THEN clause is about what the
   requirement SHALL state.
-- **`docs/backlog.md`**, for the entry that requirement says the mechanism is
-  tracked under.
+- **`docs/backlog/`**, for the entry that requirement says the mechanism is
+  tracked under, read as that entry's own file.
 - **The recipe in `docs/onboard-an-application.md`**, which the requirement names
   as how each provisioning is performed until the mechanism exists. It was in
   `docs/bootstrap-a-new-host.md` when this module was written and moved with the
@@ -107,7 +107,7 @@ APPLICATION = "commerce-ops"
 # per server; the requirement names the new one, and every assertion below is
 # unchanged -- what moved is the file they read, never what they check of it.
 RECIPE_DOCUMENT = ROOT / "docs" / "onboard-an-application.md"
-BACKLOG = ROOT / "docs" / "backlog.md"
+BACKLOG = ROOT / "docs" / "backlog"
 
 REQUIREMENT_HEADING = re.compile(r"^###\s+Requirement:\s*(?P<name>.+?)\s*$")
 # A heading at level three or above ends a requirement block; a scenario
@@ -178,7 +178,7 @@ ISO_DATE = re.compile(r"\b\d{4}-\d{2}-\d{2}\b")
 FIRED = re.compile(r"\btrigger\b.*\bfired\b|\bfired\b.*\btrigger\b", re.IGNORECASE | re.DOTALL)
 OWED = re.compile(r"\bowed\b")
 NOT_DISCHARGED = re.compile(r"manual provisioning SHALL NOT be read as discharging")
-BACKLOG_ENTRY = re.compile(r"`docs/backlog\.md`\s+as\s+`(?P<entry>[a-z0-9]+(?:-[a-z0-9]+)+)`")
+BACKLOG_ENTRY = re.compile(r"`docs/backlog/`\s+as\s+`(?P<entry>[a-z0-9]+(?:-[a-z0-9]+)+)`")
 SUPERSEDED_PREMISE = re.compile(r"no application has needed one", re.IGNORECASE)
 
 MISSING_FIRED = "a paragraph stating that the automation trigger fired"
@@ -186,7 +186,7 @@ MISSING_DATE = "a date on that statement"
 MISSING_APPLICATION = f"the application that fired it, `{APPLICATION}`"
 MISSING_OWED = "that the mechanism and its credential path are owed"
 MISSING_NOT_DISCHARGED = "that a manual provisioning SHALL NOT be read as discharging the obligation"
-MISSING_BACKLOG_ENTRY = "the `docs/backlog.md` entry the mechanism is tracked under"
+MISSING_BACKLOG_ENTRY = "the `docs/backlog/` entry the mechanism is tracked under"
 
 
 def divergence_paragraphs(block: str) -> list[str]:
@@ -311,7 +311,7 @@ class TestTheBacklogCarriesTheEntryTheRequirementNames(
     RequirementSourcesMixin, unittest.TestCase
 ):
     """SPECIFIED -- the modified requirement's body: "The mechanism is tracked in
-    `docs/backlog.md` as `automate-per-application-database-provisioning`"."""
+    `docs/backlog/` as `automate-per-application-database-provisioning`"."""
 
     def test_the_requirement_names_the_backlog_entry(self) -> None:
         """SPECIFIED -- as the class docstring."""
@@ -319,25 +319,25 @@ class TestTheBacklogCarriesTheEntryTheRequirementNames(
             with self.subTest(source=source):
                 self.assertIsNotNone(
                     tracked_backlog_entry(block),
-                    f"*{REQUIREMENT_NAME}* in {source} names no `docs/backlog.md` "
+                    f"*{REQUIREMENT_NAME}* in {source} names no `docs/backlog/` "
                     "entry for the owed mechanism",
                 )
 
     def test_the_backlog_carries_that_entry(self) -> None:
-        """SPECIFIED -- as the class docstring. A necessary condition only: this
-        establishes that the backlog names the entry, not that it is an entry
-        rather than a mention inside another one."""
-        backlog = read_text(BACKLOG)
+        """SPECIFIED -- as the class docstring. With one file per entry, a file
+        of the entry's name is the entry, so this no longer stops at the backlog
+        naming it somewhere."""
         for source, block in self.sources():
             entry = tracked_backlog_entry(block)
             if entry is None:
                 continue  # reported by the test above
             with self.subTest(source=source, entry=entry):
+                path = BACKLOG / f"{entry}.md"
                 self.assertTrue(
-                    entry in backlog,
+                    path.is_file(),
                     f"*{REQUIREMENT_NAME}* in {source} says the owed mechanism is "
-                    f"tracked in {BACKLOG.relative_to(ROOT)} as `{entry}`, and that "
-                    "file does not name it",
+                    f"tracked in {BACKLOG.relative_to(ROOT)}/ as `{entry}`, and "
+                    f"{path.relative_to(ROOT)} does not exist",
                 )
 
 
@@ -366,7 +366,7 @@ This requirement binds when an application actually keeps data on this host.
 
 How a database and its role are provisioned SHALL be automated, and the trigger for that obligation is the first application given a database in this instance.
 
-**One divergence is stated rather than hidden, as of 2026-09-13.** That trigger fired on 2026-09-13, when `{APPLICATION}` became the first application given a database in this instance. The obligation is due and is not met: the mechanism and its credential path are owed and not yet built. A manual provisioning SHALL NOT be read as discharging it. The mechanism is tracked in `docs/backlog.md` as `automate-per-application-database-provisioning`.
+**One divergence is stated rather than hidden, as of 2026-09-13.** That trigger fired on 2026-09-13, when `{APPLICATION}` became the first application given a database in this instance. The obligation is due and is not met: the mechanism and its credential path are owed and not yet built. A manual provisioning SHALL NOT be read as discharging it. The mechanism is tracked in `docs/backlog/` as `automate-per-application-database-provisioning`.
 
 #### Scenario: A new application requests a database
 - **WHEN** an application needs one

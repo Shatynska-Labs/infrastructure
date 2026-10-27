@@ -211,13 +211,14 @@ EXEMPT_WHOLE_PATHS: dict[str, str] = {
 }
 
 # Exemptions scoped to a LINE rather than to a file, and this change needs the
-# distinction rather than merely benefiting from it. `docs/backlog.md` names
-# the store TWICE: once recording what staging held on 2026-09-13, which is a
+# distinction rather than merely benefiting from it. The backlog -- then one
+# file, `docs/backlog.md` -- named the store TWICE: once recording what staging held on 2026-09-13, which is a
 # dated observation and would be made false by editing it, and once in
 # `alert-on-the-exporter-being-unable-to-read-postgres`, which is present-tense
 # and becomes false when this change lands. A whole-path exemption on that file
 # would be green over both, and the second is the one this change's own task
-# list exists to correct.
+# list exists to correct. The dated line now sits in its own entry's file,
+# which `move-the-backlog-into-entry-files` (design D3) named here.
 #
 # The marker is a substring that must appear ON THE SAME LINE as the needle.
 # It is read as a plain substring rather than as a pattern, and the assertion
@@ -225,7 +226,7 @@ EXEMPT_WHOLE_PATHS: dict[str, str] = {
 # needle, so an exemption cannot outlive the occurrence it describes.
 EXEMPT_LINES: tuple[tuple[str, str, str], ...] = (
     (
-        "docs/backlog.md",
+        "docs/backlog/rename-the-requirements-that-read-narrower-than-they-are.md",
         "so it holds stores:",
         "records what the staging host held on 2026-09-13, by the name it held "
         "it under on that date. Editing it would make it say something that was "
