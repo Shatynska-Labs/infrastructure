@@ -50,17 +50,17 @@ Also here: `sshd_config` (no drop-in under `/etc/ssh/sshd_config.d/`; `PasswordA
 
 Both hosts carried `/var/run/reboot-required` (kernel, `linux-base`, `libc6`) from 2026-09-10 to 2026-09-16 with nothing reporting it, until rebooted by hand. `unattended-upgrades` is installed and enabled by the image, not by `hardening`, and every `Automatic-Reboot` line is commented out, so patches install and do not take effect for an unbounded time while the host looks healthy.
 
-It is two changes under one name. *Noticing* is a metric and an alert: node-exporter's textfile collector is not enabled (`platform/docker-compose.yml`'s `node-exporter` has no `--collector.textfile.directory` and no mount), so it needs a `platform/` change for the collector and rule plus an `ansible/` unit that writes the metric, through two pipelines. *Deciding what reboots* is a `hardening` change: an `Automatic-Reboot` policy with a window, or a stated operator ritual. Rebooting is known-safe: both hosts rebooted cleanly on 2026-09-16 in about forty seconds (containers back on `restart: unless-stopped`, `/mnt/main` mounted before Docker, including production's first boot with the shared database on that volume; swap, `ufw`, `tailscaled` up). A reboot is an outage of every application on the host, so an automatic production policy is a scheduled outage; `hold-every-platform-deploy-for-the-length-of-a-window` is what would keep a deploy out of it.
+It is two changes under one name. *Noticing* is a metric and an alert: node-exporter's textfile collector is enabled since `record-basis-api-durable-store`, but over `/mnt/main/applications/*/metrics` only, for applications' backup metrics; a host unit's metrics need a directory that glob reaches, or the glob widened, and the file contract in `docs/onboard-an-application.md` §3.1 (temporary name, `chmod 0644`, rename; identical or absent help text) applies to them too; so it needs a rule in `platform/` plus an `ansible/` unit that writes the metric, through two pipelines. *Deciding what reboots* is a `hardening` change: an `Automatic-Reboot` policy with a window, or a stated operator ritual. Rebooting is known-safe: both hosts rebooted cleanly on 2026-09-16 in about forty seconds (containers back on `restart: unless-stopped`, `/mnt/main` mounted before Docker, including production's first boot with the shared database on that volume; swap, `ufw`, `tailscaled` up). A reboot is an outage of every application on the host, so an automatic production policy is a scheduled outage; `hold-every-platform-deploy-for-the-length-of-a-window` is what would keep a deploy out of it.
 
 **Kind**: `change`. It needs the operator's reboot-policy decision, spans two pipelines, and owes deltas to `iac-host-configuration` (unattended updates owned by `hardening`) and `iac-platform-services` (the collector and alert).
 
 **Waits on**: `nothing`.
 
-**Design with**: `alert-on-a-scheduled-units-own-output` (the same unenabled textfile collector: flag, directory, ownership and mount are built once for both), `close-public-ssh-and-manage-sshd-explicitly` (the other half of the image-default `hardening` gap).
+**Design with**: `alert-on-a-scheduled-units-own-output` (the same textfile collector and the same question of where a host unit's metrics file lives), `close-public-ssh-and-manage-sshd-explicitly` (the other half of the image-default `hardening` gap).
 
 **Recorded by**: the operator and a session on 2026-09-16, from the hosts after rebooting them by hand; not by a change.
 
-**Re-checked**: 2026-10-19.
+**Re-checked**: 2026-10-27.
 
 ## `manage-root-authorized-keys-from-a-role`
 
@@ -278,7 +278,7 @@ Owed: an alert on `pg_up == 0` for the `postgres-exporter` job in the inline `pr
 
 `prune-host-images` writes its outcome to the journal and nothing reads it. The dead-man's switch covers the unit not running, not what a successful run reported, so a prune that refuses the same image weekly, or whose `considered` count collapses, is green. The sharpest case: a runtime that stops responding mid-loop leaves the prune reporting every remaining candidate refused and still exiting zero, so the heartbeat goes green on a half-done run (signature in `ansible/roles/image_prune/README.md`, which cites this entry).
 
-Mechanism: node-exporter's textfile collector, with rules in the inline `prometheus_rules`. The collector is not enabled (no `--collector.textfile.directory`, no mount), and the first entry taken pays for the flag, directory, ownership and mount. Decide whether the prune script writes the textfile (making metrics part of a script governed by *A Run That Cannot Determine the Keep Set Completely Removes Nothing*) or a wrapper does (a second thing that can silently stop). Shape it for every scheduled host unit, not the prune alone.
+Mechanism: node-exporter's textfile collector, with rules in the inline `prometheus_rules`. Node-exporter's textfile collector is enabled since `record-basis-api-durable-store`, but over `/mnt/main/applications/*/metrics` only, for applications' backup metrics; a host unit's metrics need a directory that glob reaches, or the glob widened, and the file contract in `docs/onboard-an-application.md` §3.1 (temporary name, `chmod 0644`, rename; identical or absent help text) applies to them too. Decide whether the prune script writes the textfile (making metrics part of a script governed by *A Run That Cannot Determine the Keep Set Completely Removes Nothing*) or a wrapper does (a second thing that can silently stop). Shape it for every scheduled host unit, not the prune alone.
 
 **Kind**: `change`. It needs the script-or-wrapper decision, spans a role, a collector directory and alert rules, and owes deltas to `iac-host-configuration` and `iac-platform-services`.
 
@@ -288,7 +288,7 @@ Mechanism: node-exporter's textfile collector, with rules in the inline `prometh
 
 **Recorded by**: `report-refused-removals-in-the-host-prune`, which found `image_prune`'s README already citing this deferral without a record; out of a reporting change's scope.
 
-**Re-checked**: 2026-10-19.
+**Re-checked**: 2026-10-27.
 
 ## `label-each-stack-s-alerts-with-the-stack-they-came-from`
 
@@ -474,11 +474,11 @@ A design must answer: where the password is generated and how it reaches the app
 
 ## `exercise-the-volume-server-coupling-against-live-state`
 
-`terraform/stacks/main-production/main.tf` couples the volume to the server (`count = var.volume_enabled && var.server_enabled ? 1 : 0`). *Conditional Prod Volume Creation* (`openspec/specs/iac-data-volumes/spec.md`) states two scenarios, *Volume toggle disabled creates nothing* and *Disabling the server also removes the volume*, that nothing has run against production's live state. The module tests under `terraform/modules/volume/tests/` cannot reach a stack's `count`.
+*Conditional Prod Volume Creation* (`openspec/specs/iac-data-volumes/spec.md`) states its toggle scenarios, and not all have been run against live state. The module tests under `terraform/modules/volume/tests/` cannot reach a stack's `count`.
 
-Staging's half was observed on 2026-09-16 by `write-and-rehearse-the-rebuild-runbook` (`server_enabled = false` planned `0 to add, 0 to change, 3 to destroy`: server, firewall and volume; the apply destroyed the volume first). That also settled where the reads can run: the pull request's own plan job, which needs no local HCP credential (the workstation's credential belongs to another organisation). What remains is production, where no backup covers the volume: two plan-only reads (each toggle set false in turn) on a pull request that is read and closed, **never merged or applied**.
+Staging's half was observed on 2026-09-16 by `write-and-rehearse-the-rebuild-runbook` (`server_enabled = false` planned `0 to add, 0 to change, 3 to destroy`: server, firewall and volume; the apply destroyed the volume first). That also settled where the reads can run: the pull request's own plan job, which needs no local HCP credential (the workstation's credential belongs to another organisation). Production's server toggle no longer reaches its volume (`record-basis-api-durable-store`: `count = var.volume_enabled ? 1 : 0`), and that change observed it: its task 1.5's plan-only pull request (#288) set `server_enabled = false` and planned `0 to add, 0 to change, 2 to destroy`, server and firewall, the volume unchanged. What remains is production's `volume_enabled = false`: one plan-only read on a pull request that is read and closed, **never merged or applied**, since the volume now holds `basis-api`'s store.
 
-**Kind**: `fix`. No delta, no decision. It runs two existing scenarios as plans and records the result.
+**Kind**: `fix`. No delta, no decision. It runs an existing scenario as a plan and records the result.
 
 **Waits on**: `nothing`.
 
@@ -486,7 +486,7 @@ Staging's half was observed on 2026-09-16 by `write-and-rehearse-the-rebuild-run
 
 **Recorded by**: `make-openspec-validation-a-usable-gate`, which recovered it from `add-prod-data-volume`'s unticked task 3.5 (now under that archive's `## Not performed`), where it would otherwise have been lost.
 
-**Re-checked**: 2026-10-19.
+**Re-checked**: 2026-10-27.
 
 ## `say-what-a-stale-saved-plan-is-and-how-to-recover-from-it`
 
@@ -823,17 +823,17 @@ Public names follow `<service>.<server>.BASE_DOMAIN` (`<app>.main-production.BAS
 
 *The Host Carries an Operator-Declared Maintenance Window for the Shared Instance* (`openspec/specs/iac-host-configuration/spec.md`) lets applications read `window-open` from `/var/lib/platform-maintenance/shared-postgres-window` during a destructive act on the shared instance. It cannot announce a rebuild, because the declaration lives on the host the rebuild destroys: the probe gets no answer, which is exactly the state of a host that has fallen over, so an application cannot tell the two apart when it matters most.
 
-The change owes a decision on who the audience is and where such a declaration lives: off the host (a repository variable, status page, or field the application's deploy reads) survives the rebuild but needs a second mechanism; on the host but restored early closes only part of the window; out-of-band to operators is not machine-readable. Today `docs/runbook-rebuild.md` says the alarms are expected and asks the operator to tell each application's owner by hand. Staging holds no database-bearing application since `remove-commerce-ops-from-staging` (archived 2026-10-18); `basis-api` is onboarded with a probe key for a database it will take later.
+The change owes a decision on who the audience is and where such a declaration lives: off the host (a repository variable, status page, or field the application's deploy reads) survives the rebuild but needs a second mechanism; on the host but restored early closes only part of the window; out-of-band to operators is not machine-readable. Today `docs/runbook-rebuild.md` says the alarms are expected and asks the operator to tell each application's owner by hand. Staging holds no database-bearing application since `remove-commerce-ops-from-staging` (archived 2026-10-18); `basis-api` holds each host's only shared-instance database, probed through its `probe_public_key`; production's moves to `basis-api`'s own container on the data volume (`record-basis-api-durable-store`, then Basis's `move-to-durable-data-storage`), after which `finish-basis-api-s-move-to-its-own-database` retires production's shared-instance database and probe key.
 
 **Kind**: `change`. It needs the operator's decision on audience and location, and owes an `iac-host-configuration` delta.
 
-**Waits on**: a second application holding a database in a shared instance (`basis-api`'s planned database is the likely one), or a rebuild performed by someone other than the operator who would otherwise send the message.
+**Waits on**: a second application holding a database in a shared instance (`basis-api` holds the only one today), or a rebuild performed by someone other than the operator who would otherwise send the message.
 
 **Design with**: `nothing`.
 
 **Recorded by**: planning `write-and-rehearse-the-rebuild-runbook` (2026-09-16), which found the gap; it was not a blocker on the runbook because a rebuild is operator-initiated and can be announced by hand.
 
-**Re-checked**: 2026-10-19.
+**Re-checked**: 2026-10-27.
 
 ## `make-a-rotated-secret-reach-its-inline-config`
 
@@ -869,19 +869,19 @@ What remains is a repeatable check. These are GitHub Environment secrets, invisi
 
 ## `decide-whether-the-data-volume-should-survive-a-server-toggle`
 
-Each stack couples its data volume to its server (`count = var.volume_enabled && var.server_enabled ? 1 : 0`), so `server_enabled = false` discards the volume, which has no Hetzner backup; the server's backups reach the root disk only. `add-prod-data-volume`'s design accepted this deliberately. The 2026-09-16 rehearsal showed the apply destroys the volume **first**, before the server. Decoupling would give the volume its own `location` and gate it on `volume_enabled` alone; the cost is not money (tens of cents a month) but the toggle's meaning (`terraform/stacks/main-staging/variables.tf`: `server_enabled` is "the way to stop paying for staging without deleting its configuration").
+`main-staging` couples its data volume to its server (`count = var.volume_enabled && var.server_enabled ? 1 : 0`), so `server_enabled = false` discards the volume, which has no Hetzner backup; the server's backups reach the root disk only. `add-prod-data-volume`'s design accepted this deliberately. The 2026-09-16 rehearsal showed the apply destroys the volume **first**, before the server. Decoupling would give the volume its own `location` and gate it on `volume_enabled` alone; the cost is not money (tens of cents a month) but the toggle's meaning (`terraform/stacks/main-staging/variables.tf`: `server_enabled` is "the way to stop paying for staging without deleting its configuration").
 
-It is not worth doing while *No Store on This Host Holds Data Requiring Backup* (`openspec/specs/iac-safety-hardening/spec.md`) holds: nothing on the volume is durable. **Must not undo**: when durable data lands on a host, decoupling and a real backup are owed together; decoupling alone looks like protection while protecting against nothing.
+`main-production` no longer does: `record-basis-api-durable-store` gave its volume a `location` of its own and gated it on `volume_enabled` alone, delivered with `basis-api`'s backups, so this entry is staging's alone. It is not worth doing while *No Store on This Host Holds Data Requiring Backup* (`openspec/specs/iac-safety-hardening/spec.md`) holds: nothing on the volume is durable. **Must not undo**: when durable data lands on a host, decoupling and a real backup are owed together; decoupling alone looks like protection while protecting against nothing.
 
 **Kind**: `change`. It owes an `iac-safety-hardening`/stack delta and the operator's decision on the toggle's meaning, delivered with a backup.
 
-**Waits on**: durable data landing on a stack's data volume, i.e. a store there that *No Store on This Host Holds Data Requiring Backup* cannot classify as needing no backup.
+**Waits on**: durable data landing on `main-staging`'s data volume, i.e. a store there that *No Store on This Host Holds Data Requiring Backup* cannot classify as needing no backup.
 
 **Design with**: `exercise-the-volume-server-coupling-against-live-state`.
 
 **Recorded by**: a question during `write-and-rehearse-the-rebuild-runbook`'s rehearsal (2026-09-16), once the destroy had shown what the coupling does; deliberately deferred as not yet worth doing.
 
-**Re-checked**: 2026-10-19.
+**Re-checked**: 2026-10-27.
 
 ## `make-a-rotated-grafana-password-reach-grafana`
 
@@ -984,3 +984,17 @@ Once `Shatynska-Labs/basis`'s `move-to-durable-data-storage` has moved productio
 **Recorded by**: `record-basis-api-durable-store`, which records the store, decouples production's volume and alerts on backup age; retiring the database waits on the move, and declaring the backups before they exist would alert from the moment of merge.
 
 **Re-checked**: 2026-10-25.
+
+## `say-resolved-in-a-resolved-slack-alert`
+
+The `slack` receiver in `platform/docker-compose.yml`'s Alertmanager config titles a notification `{{ .CommonLabels.alertname }}` and its body lists each alert's summary and description, so with `send_resolved: true` a resolve notice reads exactly like the alert it resolves; only Slack's attachment colour (red or green) tells them apart, and the 4h repeat of a still-firing alert looks the same again. Observed during `record-basis-api-durable-store`'s alert drill (2026-10-26), where every resolve had to be told from a repeat by its timing. The title should carry `.Status` (e.g. `[RESOLVED]`), keeping `CommonLabels.alertname`, which `name-every-alert-in-a-grouped-slack-notification` relies on.
+
+**Kind**: `fix`. No delta, no decision; one template line and a `.github/tests` assertion. Editing the block also moves the config checksum, so the deploy recreates Alertmanager.
+
+**Waits on**: `nothing`.
+
+**Design with**: `make-a-rotated-secret-reach-its-inline-config`.
+
+**Recorded by**: `record-basis-api-durable-store`'s confirm step; a template change is outside its scope.
+
+**Re-checked**: 2026-10-27.

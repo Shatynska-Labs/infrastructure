@@ -220,7 +220,19 @@ That table is the classification on one date and will age; the obligation above 
 
 This requirement is distinct from *Data Durability for Stateful Resources* in this capability, which requires the server's own automatic backups. Those are daily, crash-consistent, cover the root disk but not the attached data volume, and are retained on Hetzner's schedule; they shorten a rebuild and are a last-resort recovery of the root disk. They are not a substitute for a logical backup taken and restored per database, and their existence SHALL NOT discharge the obligation above.
 
-Durable application data is expected to live in an external managed service that owns its own backups. That such a service's backups are in fact enabled and retained is a fact outside this repository: this requirement states the dependency, and nothing here verifies it.
+Durable application data takes one of two routes, and no third. It lives in an external managed service that owns its own backups — that such a service's backups are in fact enabled and retained is a fact outside this repository: this requirement states the dependency, and nothing here verifies it — or it lives in a store of the application's own on this host, admitted under the fallback above. **The shared PostgreSQL instance is neither**, as stated above.
+
+**A store admitted under the fallback owes two things beyond its backup.** It SHALL sit on a volume whose existence does not depend on the server's toggle, because a toggle that destroys the volume discards on an act meant only to stop a server what the backup exists to recover, and the server's own backups do not reach the volume (*Conditional Prod Volume Creation*, `openspec/specs/iac-data-volumes/spec.md`). And its backups' age SHALL be alerted on through the platform's alerting, because a backup that stops does so silently (*A Backed-Up Store's Backup Age Is Alerted On*, `openspec/specs/iac-platform-services/spec.md`). The backup, its storage and its restore rehearsal are the application's to perform and to record; the record here names the store, the backups it relies on, and where the evidence of its rehearsed restores is kept.
+
+The application stores admitted under the fallback, recorded by the change in this repository that admitted each:
+
+| Store | Backups | Evidence of the rehearsed restores | Recorded by |
+|---|---|---|---|
+| `basis-api`'s PostgreSQL data on `main-production` (`/mnt/main/applications/basis-api/postgres`), in a container of `Shatynska-Labs/basis`'s production Compose stack | A daily encrypted `pg_dump` of `basis-api`, and continuous WAL archiving with base backups, both written to Hetzner Object Storage in a location other than the server's (`hel1`) | `Shatynska-Labs/basis` change `move-to-durable-data-storage`, which SHALL record a checked restore from the dump and a checked point-in-time restore from the archive before durable data first lands | `record-basis-api-durable-store` |
+
+**No other application has cleared the bar**, and a row here SHALL NOT be read as permission for another: a store is admitted only by one of the reasons above or by the backup and rehearsed restore above, as the scenario on precedent below states.
+
+**Backup metrics directories are non-durable.** An application's metrics directory (`/mnt/main/applications/<application>/metrics`, `basis-api`'s among them) and the platform's empty one SHALL be treated as data whose loss is tolerable **to the operator**: they hold only the latest backup timestamps, rewritten by the next backup run, and their loss silences the backup-age alerts until then rather than making them wrong.
 
 #### Scenario: A persistent store is added to the host
 - **WHEN** a service that persists data outside its container's writable layer is added to the platform stack, or an existing service begins persisting there — including through a volume a bumped image newly declares — or an application deployed to this host persists data of its own in any volume — named or anonymous, declared by the stack definition or by the image — or in a host bind mount
@@ -243,3 +255,11 @@ Durable application data is expected to live in an external managed service that
 - **WHEN** a store named in the table above is relocated between the host's root disk and the attached data volume
 - **THEN** the table SHALL name it at the location it then occupies, so that no row names a store the host no longer has
 - **AND** its stated reason SHALL be reassessed against the reasons above rather than carried over unread, since a reason resting on where the store sits does not survive the move
+
+#### Scenario: A store admitted under the fallback survives the server toggle
+- **WHEN** a store admitted under the fallback sits on a stack's data volume and that stack's server toggle is set to `false`
+- **THEN** `terraform plan` SHALL NOT plan that volume's destruction or replacement
+
+#### Scenario: A store admitted under the fallback has its backups watched
+- **WHEN** a store is admitted under the fallback
+- **THEN** before its data first lands, each kind of backup it relies on SHALL publish its last success and maximum age as *A Backed-Up Store's Backup Age Is Alerted On* (`openspec/specs/iac-platform-services/spec.md`) requires, so that a backup overdue past its maximum age raises an alert

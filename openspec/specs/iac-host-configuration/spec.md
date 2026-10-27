@@ -179,6 +179,8 @@ An operator's public key SHALL be committed in plaintext, and the corresponding 
 ### Requirement: Platform Data Volume Is Mounted at a Fixed Host Path
 Ansible SHALL mount the platform's dedicated data volume (the Terraform-provisioned `main` Hetzner Volume) at a fixed host path, and that mount SHALL persist across a host reboot without manual intervention. Ansible SHALL also ensure the subdirectories a `platform/` service depends on exist under that mount, with ownership and permissions matching what that service's container requires, before that service can rely on them.
 
+**An application's subdirectories on the volume SHALL be declared in the vars file of the host it is deployed to**, per *A Host-Scoped Variable Lives in the Host's Own Vars File*, and created by the same converge, after the mount and after the environment's own subdirectories, with the ownership and permissions the application's container requires. They SHALL sit beneath `applications/<application>/`, so that no application's directory can be mistaken for a platform service's. The environment's own subdirectories SHALL include `applications/platform/metrics`, empty and root-owned, on every host, so that the platform's collection of application metrics always has a directory to read (*A Backed-Up Store's Backup Age Is Alerted On*, `openspec/specs/iac-platform-services/spec.md`). An application's directory is created by the host layer for the same reason a platform service's is: a bind mount of a path that does not exist yet is created by the container runtime as an empty root-owned directory on the root disk, under the mount point, and every container comes up healthy over it.
+
 This requirement covers only the mount and its filesystem layout — it does not extend Ansible's scope to templating or starting any `platform/` service, consistent with the existing "Configuration Scope Stops at the Container Runtime" requirement.
 
 Where the device path is not supplied by the caller, it SHALL be discovered on the host itself rather than carried across from the provisioning layer's output. Discovery SHALL yield the same device on every run given the same set of attached volumes, and SHALL be treated as capable of yielding nothing: a host with no matching device attached is the ordinary state of a host provisioned with the volume disabled, or observed while a volume is still attaching, and is reported by this requirement's own scenario below rather than raised as an error about the discovery expression.
@@ -232,6 +234,14 @@ The scope of "before" here is the role, not the whole host-baseline run: earlier
 #### Scenario: A running service still holds the superseded path
 - **WHEN** the superseded path is retired on a host where a running service holds a bind mount into it
 - **THEN** the run SHALL succeed, **AND** SHALL NOT unmount that path or otherwise interrupt that service's access to the data under it
+
+#### Scenario: An application's subdirectories exist on the host it is declared for
+- **WHEN** the host-baseline playbook runs against a host whose own vars file declares subdirectories for an application
+- **THEN** each SHALL exist beneath `applications/<application>/` on the mounted volume with the ownership and permissions declared, **AND** no other host SHALL receive them
+
+#### Scenario: A host declaring no application subdirectories
+- **WHEN** the host-baseline playbook runs against a host whose own vars file declares none
+- **THEN** the run SHALL create only the environment's subdirectories, and SHALL NOT fail for the absence
 
 ### Requirement: A Role's Absent Required Input Is Reported by Name
 Where a role takes an input that has no safe default, must therefore be supplied by its caller, and is consumed on every run of that role, the role SHALL detect that the input was not supplied and fail with a diagnostic naming the input and where it is expected to be set, before any task that acts on the host runs.
