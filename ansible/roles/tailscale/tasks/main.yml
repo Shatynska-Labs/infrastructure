@@ -38,7 +38,9 @@
 # directly against https://pkgs.tailscale.com/stable/ubuntu/resolute/...
 # that this exact version is published for this host's Ubuntu codename
 # (resolute) before pinning it here -- not assumed the way it briefly was
-# for Docker.
+# for Docker. Raised from 1.102.3 to 1.104.2, the version Tailscale's own
+# auto-update had already installed on both hosts: apt refuses to downgrade
+# under `-y`, so the old pin failed every converge.
 # DECLARES NO CACHE STALENESS BOUND, deliberately, where hardening's and
 # image_prune's apt tasks do. Three reasons; the first survives the other two.
 #
@@ -57,7 +59,7 @@
 # See the change cache-the-apt-index-within-a-converge.
 - name: Ensure Tailscale is installed (pinned exact version)
   ansible.builtin.apt:
-    name: "tailscale=1.102.3"
+    name: "tailscale=1.104.2"
     state: present
     update_cache: true
 
@@ -203,4 +205,22 @@
       ((tailscale_prefs_check.stdout | default('') | trim) is match('^\{')) and
       (tailscale_prefs_check.stdout | from_json).Hostname | default('')
       == inventory_hostname
+    )
+
+# KEEPS THE PIN ABOVE TRUE. With Tailscale's auto-update applying, `tailscaled`
+# upgrades itself from the apt source this role adds, the host drifts past the
+# pinned version, and the next converge fails refusing the downgrade -- which
+# is how 1.102.3 came to fail on both hosts. Upgrades arrive by raising the pin.
+#
+# Same shape as the hostname pin above, for the same reasons: it always runs,
+# and `changed_when` reports no change only where the prefs read positively
+# established that auto-update was already off.
+- name: Stop Tailscale applying its own updates
+  ansible.builtin.command: "tailscale set --auto-update=false"
+  changed_when: >
+    not (
+      (tailscale_prefs_check.rc | default(1)) == 0 and
+      (tailscale_prefs_check.stdout | default('') | trim | length) > 0 and
+      ((tailscale_prefs_check.stdout | default('') | trim) is match('^\{')) and
+      ((tailscale_prefs_check.stdout | from_json).AutoUpdate | default({}, true)).Apply | default(true) is false
     )
