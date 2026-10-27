@@ -41,7 +41,7 @@ hardening_ssh_allowed_cidrs:
 # 80/443. Traefik PUBLISHES those ports, and a container-published port is
 # DNAT'd and traversed in FORWARD, never offered to UFW's INPUT chain -- so
 # the cloud firewall alone decides what reaches them from the internet, and a
-# tailnet peer reaches them whatever this says. See docs/backlog.md's
+# tailnet peer reaches them whatever this says. See docs/backlog/'s
 # say-what-the-host-firewall-actually-gates. The mirror is kept all the same,
 # for every port UFW does gate.
 hardening_web_allowed_cidrs:

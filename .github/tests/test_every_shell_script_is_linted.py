@@ -1,6 +1,6 @@
 """The repository's shell scripts are linted, and every one of them is in scope.
 
-Written for `docs/backlog.md`'s `lint-the-repository's-shell-scripts`, taken as
+Written for the backlog entry `lint-the-repository's-shell-scripts`, taken as
 a fix rather than a change. That entry named one open decision -- whether this
 suite should assert the hook exists -- and this module is that decision taken:
 it should, for the reason the entry itself gives. A hook is one line to delete,
@@ -87,7 +87,7 @@ def shellcheck_hook(root: Path | None = None) -> tuple[dict, dict] | None:
 
 
 class TestTheRepositoryLintsItsShellScripts(unittest.TestCase):
-    """`docs/backlog.md`'s `lint-the-repository's-shell-scripts`, taken as a fix."""
+    """The backlog entry `lint-the-repository's-shell-scripts`, taken as a fix."""
 
     def test_the_repository_has_shell_scripts_to_lint(self) -> None:
         """The vacuity guard, and it is not ceremonial: every assertion below

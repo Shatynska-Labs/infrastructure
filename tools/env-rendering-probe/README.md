@@ -8,7 +8,7 @@ It exists because `.github/workflows/platform-deploy.yml` renders eight values i
 
 ## What this is not
 
-**Not a test, and in none of `AGENTS.md`'s three test rows.** No pipeline runs it and nothing fails if it stops working. It spawns a container, which `.github/tests` asserts over itself that it may not; and its subject is a workflow's output, where Molecule's is an Ansible role's behaviour on a host. That gap is why the escaping rule's behavioural evidence is a dated measurement in a change record rather than a check — `design.md` Decision 6 states the residual and `docs/backlog.md` carries the entry for the deploy-time round trip that would close it, which starts from here.
+**Not a test, and in none of `AGENTS.md`'s three test rows.** No pipeline runs it and nothing fails if it stops working. It spawns a container, which `.github/tests` asserts over itself that it may not; and its subject is a workflow's output, where Molecule's is an Ansible role's behaviour on a host. That gap is why the escaping rule's behavioural evidence is a dated measurement in a change record rather than a check — `design.md` Decision 6 states the residual and `docs/backlog/` carries the entry for the deploy-time round trip that would close it, which starts from here.
 
 It is committed so that the evidence can be re-taken rather than trusted. A measurement nobody else can reproduce is evidence about its author.
 

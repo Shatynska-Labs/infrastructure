@@ -88,7 +88,7 @@ updates:
   # pin has somewhere Dependabot can see it: `pr-validation.yml` validates this
   # repository's own specification record with it, and Dependabot's npm
   # ecosystem reads `package.json` -- a version pinned inline in a workflow
-  # step is exact but invisible to it. `docs/backlog.md`'s
+  # step is exact but invisible to it. `docs/backlog/`'s
   # `cover-the-unwatched-manifests-and-settle-the-watcher` records the
   # exactly-pinned manifests here that nothing watches; the change that added
   # this one would not defensibly have added to them.

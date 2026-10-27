@@ -11,7 +11,7 @@
 # chosen without network access and should be confirmed; that confirmation has
 # happened, and the caveat was deleted on 2026-09-15 rather than left to invite
 # the next reader to redo it. Three are behind by at least a major version --
-# `docs/backlog.md`'s `catch-up-the-drifted-galaxy-pins` is that migration, and
+# `docs/backlog/`'s `catch-up-the-drifted-galaxy-pins` is that migration, and
 # it is a migration rather than a bump, which is why the pins still stand here.
 collections:
   - name: hetzner.hcloud

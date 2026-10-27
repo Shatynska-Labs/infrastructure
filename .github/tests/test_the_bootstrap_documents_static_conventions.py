@@ -31,7 +31,7 @@ The three conventions, and why none survives without a check:
   that predicts: the scheme renamed `<company>-<app>-deploy` to
   `<company>-<app>-<environment>` and gave the platform key an environment
   suffix, and for a while the most frequently generated key of the set was
-  matched by nothing. That gap was recorded in `docs/backlog.md` as
+  matched by nothing. That gap was recorded in the backlog as
   `cover-the-live-key-names-in-the-private-key-block`; this check is what
   closes it for the next rename rather than for that one. The second half bounds
   the first: the patterns that stopped the drift are broader than a key purpose,

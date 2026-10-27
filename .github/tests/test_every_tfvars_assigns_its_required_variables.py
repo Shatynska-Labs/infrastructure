@@ -1,7 +1,7 @@
 """Every stack's `terraform.tfvars` assigns every variable it declares without a
 `default`.
 
-Written for `docs/backlog.md`'s `assert-every-tfvars-assigns-its-required-variables`,
+Written for the backlog entry `assert-every-tfvars-assigns-its-required-variables`,
 taken as a fix.
 
 Otherwise a gap surfaces only at plan time: `pr-validation.yml`, `apply.yml` and
@@ -152,7 +152,7 @@ def unassigned_required_variables(directory: Path) -> list[str]:
 
 
 class TestEveryTfvarsAssignsItsRequiredVariables(unittest.TestCase):
-    """`docs/backlog.md`'s `assert-every-tfvars-assigns-its-required-variables`,
+    """The backlog entry `assert-every-tfvars-assigns-its-required-variables`,
     taken as a fix."""
 
     def test_there_are_stacks_with_required_variables_to_check(self) -> None:

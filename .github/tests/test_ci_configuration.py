@@ -3586,7 +3586,7 @@ def pre_archive_citations(root: Path | None = None) -> list[str]:
 
 
 class TestTheRepositoryReadIsTheTrackedListing(unittest.TestCase):
-    """`docs/backlog.md`'s `hold-the-whole-static-suite-to-its-own-constraints`,
+    """The backlog entry `hold-the-whole-static-suite-to-its-own-constraints`,
     taken as a fix: `committed_files()` reads tracked files, not the directory.
 
     A checkout holds nothing untracked, so without this nothing goes red when
