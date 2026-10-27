@@ -104,7 +104,7 @@ from test_ci_configuration import (
     ROOT,
     compose_service_images,
     image_names_a_release,
-    walked_files,
+    committed_files,
 )
 
 # --------------------------------------------------------------------------
@@ -322,12 +322,12 @@ def files_naming_a_disagreeing_declaration_path(root: Path | None = None) -> lis
     The obligation is that ONE path is named everywhere, and a check looking only
     for the agreed path is blind to the case it exists for: a second path,
     spelled slightly differently, in one of the three places. `openspec/` is not
-    walked, by `walked_files()`'s own pruning -- a specification quoting a path
+    read, by `committed_files()`'s own pruning -- a specification quoting a path
     is prose about it, not a place an operator reads it from.
     """
     base = _base(root)
     offenders = []
-    for path in walked_files(base):
+    for path in committed_files(root):
         try:
             text = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):

@@ -39,7 +39,7 @@ from test_ci_configuration import (
     PRE_COMMIT_CONFIG,
     ROOT,
     load_yaml,
-    walked_files,
+    committed_files,
 )
 
 SHELLCHECK_HOOK_ID = "shellcheck"
@@ -69,7 +69,7 @@ def shell_scripts(root: Path | None = None) -> list[str]:
     """Every committed shell script, as repository-relative paths."""
     base = root or ROOT
     found = []
-    for path in walked_files(base):
+    for path in committed_files(root):
         if path.is_file() and _is_shell_script(path):
             found.append(str(path.relative_to(base)))
     return sorted(found)

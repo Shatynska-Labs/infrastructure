@@ -126,7 +126,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_ci_configuration import ARCHIVE_SEGMENT, ROOT, walked_files
+from test_ci_configuration import ARCHIVE_SEGMENT, ROOT, committed_files
 from test_the_shared_instance_has_its_first_database import (
     CAPABILITY,
     REQUIREMENT_NAME,
@@ -244,11 +244,10 @@ def change_record_directories(root: Path | None = None) -> list[Path]:
 def markdown_documents(root: Path | None = None) -> list[Path]:
     """Every committed Markdown document outside `openspec/`.
 
-    `walked_files` is the suite's own enumeration and prunes that directory,
-    the other working trees and the ignored subtrees already; it is a superset
-    of the tracked files, which is the safe direction for a prohibition.
+    `committed_files` is the suite's own enumeration and prunes that directory
+    and the other working trees already.
     """
-    return [path for path in walked_files(root) if path.suffix == ".md"]
+    return [path for path in committed_files(root) if path.suffix == ".md"]
 
 
 def documents_holding_the_recipe(root: Path | None = None) -> list[str]:
