@@ -411,10 +411,11 @@ class TestTheWorkflowBlockAndConventionsFollowTheMove(unittest.TestCase):
     def test_the_workflow_block_is_marked_v12(self) -> None:
         """DERIVED -- task 2.1: marker `v12`. Establishes the marker only, not
         that the body is an unedited copy of the fragment, which lives outside
-        this repository."""
+        this repository. At least v12 rather than exactly, so a later sync is
+        not a regression of this change."""
         match = WORKFLOW_MARKER.search((ROOT / "AGENTS.md").read_text(encoding="utf-8"))
         self.assertIsNotNone(match, "AGENTS.md carries no development-workflow marker")
-        self.assertEqual("12", match.group("version"))
+        self.assertGreaterEqual(int(match.group("version")), 12)
 
     def test_the_workstreams_readme_is_seeded(self) -> None:
         """DERIVED -- design D4, task 2.1: `docs/workstreams/README.md`."""
