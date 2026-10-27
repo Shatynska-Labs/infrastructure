@@ -619,22 +619,6 @@ That change's code review built a rig, a stubbed `docker` on `PATH` answering so
 
 **Re-checked**: 2026-10-19.
 
-## `hold-the-whole-static-suite-to-its-own-constraints`
-
-The suite-wide half is done: `TestEveryModuleInTheSuiteDirectoryNeedsNoPrivilegedResource` in `.github/tests/test_ci_configuration.py` holds every module in the directory to the suite's no-network, no-credential, no-container, no-Terraform constraints. What remains is the absorbed `prune-the-repository-walkers-of-provisioned-content` half: repository-scope walkers read a directory, not the committed tree.
-
-`compose_shaped_files()` (used by `TestEveryComposeFileDeclaringAServiceImageIsCovered`) walks through `walked_files()`, which prunes `.git`, `.terraform`, `__pycache__`, `node_modules`, `openspec`, the Galaxy role and the worktree directories, but not `.molecule-home/`. On a developer machine provisioned for Molecule it finds `community.docker`/`community.general` fixture Compose files there and fails, while CI never provisions Molecule and stays green; it is also a race while Molecule creates and removes `tmp/` under that directory (observed 2026-09-11). The fix is to re-point repository-scope walkers at the existing `tracked_files()` helper in the same module, not to prune one more directory. Deleting `.molecule-home/` to get green throws away provisioning.
-
-**Kind**: `fix`. No delta; the helper already exists.
-
-**Waits on**: `nothing`.
-
-**Design with**: `share-the-static-suites-test-arrangement`, which gives the same suite a support module.
-
-**Recorded by**: `alert-on-certificate-expiry` (the self-check half), and the test author deriving `cache-the-apt-index-within-a-converge`, who met the walker half as a red suite; neither change's subject was the suite's walkers.
-
-**Re-checked**: 2026-10-19.
-
 ## `complete-the-autoupdate-workflow-s-own-checks`
 
 `open-autoupdate-pr-with-app-token` added a section to `.github/tests/test_ci_configuration.py` that finds pull-request-opening steps and asserts their identity. Its helpers have four reading limits, each a false positive on a legitimate change: `token_inputs` reads only step-level `env:` and misses a job- or workflow-level `GH_TOKEN` (the likeliest to bite, the first time a workflow opens a PR with `gh`); `step_opens_a_pull_request` matches a POST and `/pulls` anywhere in one `run:` block; `secrets_referenced_by` scans the whole job, not the identity path (`HEARTBEAT_PING_KEY` already sits in that workflow); `readme_sections` splits at any `#` line, including inside code fences.
@@ -648,20 +632,6 @@ The section also asserts nothing about two properties of `.github/workflows/pre-
 **Design with**: `nothing`.
 
 **Recorded by**: `open-autoupdate-pr-with-app-token`, whose tests were independently derived from its deltas; fixing or extending them was a change of its own.
-
-**Re-checked**: 2026-10-19.
-
-## `assert-every-role-has-a-mock-roles-entry`
-
-`.ansible-lint`'s `mock_roles:` hand-lists every role referenced by name, because ansible-lint does not resolve roles through `ansible/ansible.cfg`'s `roles_path`. Nothing asserts the list is complete. A new role under `ansible/roles/` used from `ansible/playbooks/host-baseline.yml` without an entry fails ansible-lint twice (playbook and the role's own `converge.yml`) with a misleading "role not found" naming a search path, which sends the time to the wrong file (observed 2026-09-08 adding `swap`). The cost lands on whoever adds the next role. The check is a static read for `.github/tests`: role directories under `ansible/roles/` minus the gitignored external role, against `mock_roles`. It has the same shape as the "every lockfile-bearing directory is covered" check. The list is complete today.
-
-**Kind**: `fix`. A static assertion with no delta or decision.
-
-**Waits on**: `nothing`.
-
-**Design with**: `nothing`.
-
-**Recorded by**: `bound-host-log-growth-and-add-swap`, which hit the gap and added its missing entry; asserting the invariant was a different concern from that change's subject.
 
 **Re-checked**: 2026-10-19.
 
@@ -939,7 +909,7 @@ The `.github/tests` suite has no shared test arrangement: several modules import
 
 **Waits on**: `nothing`.
 
-**Design with**: `hold-the-whole-static-suite-to-its-own-constraints`, which also changes how that suite's modules read the tree.
+**Design with**: `nothing`.
 
 **Recorded by**: `sync-ai-toolkit-workflow-v10`, which recorded the shared test arrangement as none when taking ai-toolkit's development-workflow v10; creating one is not a sync.
 
@@ -947,7 +917,7 @@ The `.github/tests` suite has no shared test arrangement: several modules import
 
 ## `move-the-backlog-into-entry-files`
 
-Convert `docs/backlog.md` into `docs/backlog/`, one file per entry with YAML frontmatter, the shape ai-toolkit's development workflow v12 and its `backlog` skill now read, using ai-toolkit's `scripts/backlog-migrate`. The conversion itself is mechanical. What is not mechanical is the file's path, which this repository has made load-bearing: two requirements, *iac-host-configuration* and *iac-platform-services*, cite entries as "tracked in `docs/backlog.md`"; `.github/tests/` parses that phrase and reads the file (`test_the_shared_instance_has_its_first_database.py`, `test_a_deploy_key_is_bound_to_one_host.py`, and others); and the workflows, `dependabot.yml` and most `.github/tests/` modules name the path, mostly as a docs-only path filter or exemption. A first attempt that converted the file alone failed `validate`. Must not undo the `assert-every-role-has-a-mock-roles-entry` rename, which the converter needs, since it refuses a name holding `_`.
+Convert `docs/backlog.md` into `docs/backlog/`, one file per entry with YAML frontmatter, the shape ai-toolkit's development workflow v12 and its `backlog` skill now read, using ai-toolkit's `scripts/backlog-migrate`. The conversion itself is mechanical. What is not mechanical is the file's path, which this repository has made load-bearing: two requirements, *iac-host-configuration* and *iac-platform-services*, cite entries as "tracked in `docs/backlog.md`"; `.github/tests/` parses that phrase and reads the file (`test_the_shared_instance_has_its_first_database.py`, `test_a_deploy_key_is_bound_to_one_host.py`, and others); and the workflows, `dependabot.yml` and most `.github/tests/` modules name the path, mostly as a docs-only path filter or exemption. A first attempt that converted the file alone failed `validate`.
 
 **Kind**: `change`. It owes MODIFIED deltas on the two requirements that cite `docs/backlog.md`, and test updates, beside the conversion and the workflow block's move to v12.
 

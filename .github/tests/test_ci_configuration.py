@@ -199,7 +199,7 @@ def _selects(patterns, path: str) -> bool:
 def terraform_lockfile_directories(root: Path | None = None) -> set[str]:
     """Every repository directory carrying a `.terraform.lock.hcl`, as `/a/b`.
 
-    Walks with `walked_files()` rather than with `rglob`, because AGENTS.md
+    Reads `committed_files()` rather than an `rglob`, because AGENTS.md
     requires every change to take a working tree -- at `.claude/worktrees/<name>`
     under the Claude Code binding, or `.worktrees/<name>` generally -- and a
     working tree is a FULL COPY of the repository. An `rglob` pruning only
@@ -214,15 +214,14 @@ def terraform_lockfile_directories(root: Path | None = None) -> set[str]:
     was a red suite a session had to learn to disbelieve, which is the habit this
     repository refuses everywhere else.
 
-    `.gitignore` is not an alternative to this, and the two are not the same fix.
-    A filesystem walk does not consult git, so ignoring `.claude/worktrees/`
-    leaves this walk finding precisely what it found before. Both working-tree
-    roots are ignored for the other reason -- it stops a `git add -A` from the
+    The repository read is now the tracked listing, so an untracked working tree
+    is out of it whatever `.gitignore` says; a fixture walk still relies on the
+    prune list. Both working-tree roots are ignored for another reason -- it stops a `git add -A` from the
     main working tree staging a duplicate copy of the whole repository -- and
     `TestTheWorkingTreeRootsAreIgnored` holds them there.
 
     Takes `root` so the behaviour is exercisable against a fixture tree. The
-    forward reference to `walked_files()`, defined further down this file, is
+    forward reference to `committed_files()`, defined further down this file, is
     resolved at call time.
 
     Inherited from that walker, and accepted rather than discovered later: it
@@ -233,7 +232,7 @@ def terraform_lockfile_directories(root: Path | None = None) -> set[str]:
     """
     base = ROOT if root is None else root
     found = set()
-    for path in walked_files(base):
+    for path in committed_files(root):
         if path.name != ".terraform.lock.hcl":
             continue
         relative = path.parent.relative_to(base).as_posix()
@@ -2517,6 +2516,10 @@ class TestTheSuiteDiscriminates(unittest.TestCase):
             "    schedule:\n"
             "      interval: weekly\n"
         )
+        # A checkout, as the suite reads one: its repository-scope reads list
+        # the tracked files, so an untracked fixture would be read as empty.
+        for command in (["init", "-q"], ["add", "-A"]):
+            subprocess.run(["git", "-C", str(root), *command], check=True, timeout=60)
         return root
 
     def _run_against(self, root: Path) -> subprocess.CompletedProcess:
@@ -3477,14 +3480,9 @@ WRAPPED_CITATION = re.compile(
 # would inflict on itself on every run rather than one a developer provokes and
 # can see. That is what separates it from the untracked scratch file design
 # Decision 7 deliberately accepts.
-# NOTE: this list and `PRUNED_AT_ROOT_RELATIVE` below hand-mirror part of
-# `.gitignore`, and nothing keeps the two in step. The prohibition is over
-# *committed* files, so an ignored path added to `.gitignore` later -- a second
-# Galaxy role from `ansible/requirements.yml`, a repo-local `.venv`,
-# `.pytest_cache` -- becomes readable here and can turn the check red on a file
-# nobody committed. That is local-only; continuous integration checks out a
-# clean tree. When adding an ignore rule for something that lands inside the
-# working tree, add it here too.
+# NOTE: the repository read (`committed_files()`) lists tracked files, so an
+# ignored path never reaches it whatever this list says; these lists matter for
+# what the tracked set still holds (`openspec/`) and for fixture-tree walks.
 PRUNED_ANYWHERE = frozenset({".git", ".terraform", "__pycache__", "node_modules"})
 
 # Pruned only at their path relative to the walk root. `.claude` is NOT pruned
@@ -3497,13 +3495,11 @@ PRUNED_AT_ROOT_RELATIVE = frozenset(
 
 
 def walked_files(root: Path | None = None) -> list[Path]:
-    """Every file the prohibition covers, found by walking rather than by
-    asking the version-control tool.
+    """Every file under `root` outside the pruned paths, found by walking.
 
-    `subprocess` is confined to `bash`/`sh` by this suite's own assertions, so
-    a tracked-file listing is unavailable (design Decision 7). The walk is a
-    superset of the tracked files -- an untracked scratch file in the tree is
-    read too -- which is the safe direction for a prohibition.
+    A walk reads whatever the tree holds, untracked and ignored content
+    included, so it is for scratch fixture trees, which have no tracked files.
+    A read of the repository itself goes through `committed_files()`.
     """
     root = ROOT if root is None else root
     found: list[Path] = []
@@ -3524,6 +3520,40 @@ def walked_files(root: Path | None = None) -> list[Path]:
     return found
 
 
+def committed_files(root: Path | None = None) -> list[Path]:
+    """Every committed file outside the pruned paths -- the repository-scope
+    file set this suite reads.
+
+    With no `root`, the tracked files, filtered by the same prune rules as
+    `walked_files()`. A walk of the repository also reads what a developer's
+    machine holds and a checkout does not -- `.molecule-home/` carries vendored
+    collections whose fixture Compose files turned the coverage checks red on a
+    machine provisioned for Molecule while continuous integration stayed green,
+    and races Molecule creating and removing `tmp/` beneath it. The suite's
+    subject is the committed file, so it reads the committed set rather than
+    pruning one more directory.
+
+    With a `root`, a scratch fixture tree, which is not a repository and is
+    walked instead.
+    """
+    if root is not None:
+        return walked_files(root)
+    found: list[Path] = []
+    for name in sorted(tracked_names()):
+        directories = name.split("/")[:-1]
+        if set(directories) & PRUNED_ANYWHERE:
+            continue
+        if any(
+            "/".join(directories[:depth]) in PRUNED_AT_ROOT_RELATIVE
+            for depth in range(1, len(directories) + 1)
+        ):
+            continue
+        path = ROOT / name
+        if path.is_file():
+            found.append(path)
+    return found
+
+
 def pre_archive_citations(root: Path | None = None) -> list[str]:
     """Every citation of a change's own directory under `openspec/changes/`,
     as `<path>:<line>: <matched text>`.
@@ -3532,11 +3562,11 @@ def pre_archive_citations(root: Path | None = None) -> list[str]:
     all: a check that read nothing would otherwise report success having
     verified nothing.
     """
+    files = committed_files(root)
     root = ROOT if root is None else root
-    files = walked_files(root)
     if not files:
         raise AssertionError(
-            f"the walk from {root} reached no file at all, so every citation "
+            f"the read from {root} reached no file at all, so every citation "
             f"assertion over it would pass having read nothing"
         )
     offences: list[str] = []
@@ -3555,6 +3585,49 @@ def pre_archive_citations(root: Path | None = None) -> list[str]:
     return offences
 
 
+class TestTheRepositoryReadIsTheTrackedListing(unittest.TestCase):
+    """`docs/backlog.md`'s `hold-the-whole-static-suite-to-its-own-constraints`,
+    taken as a fix: `committed_files()` reads tracked files, not the directory.
+
+    A checkout holds nothing untracked, so without this nothing goes red when
+    the read reverts to a walk -- which is how the defect escaped before. Runs
+    the suite's own module against a scratch repository holding one tracked
+    file and one untracked file under `.molecule-home/`.
+    """
+
+    def test_an_untracked_file_is_not_read_as_committed(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="ci-suite-tracked-"))
+        try:
+            (root / "tracked.txt").write_text("tracked\n")
+            vendored = root / ".molecule-home" / "x"
+            vendored.mkdir(parents=True)
+            subprocess.run(["git", "-C", str(root), "init", "-q"], check=True, timeout=60)
+            subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, timeout=60)
+            (vendored / "compose.yml").write_text("services: {web: {image: nginx}}\n")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    "import test_ci_configuration as t; "
+                    "print(*sorted(p.relative_to(t.ROOT).as_posix() for p in t.committed_files()))",
+                ],
+                cwd=SUITE_DIR,
+                env=dict(os.environ, REPO_ROOT=str(root), PYTHONPATH=str(SUITE_DIR)),
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(
+                "tracked.txt",
+                result.stdout.strip(),
+                "the repository read reached something other than the tracked "
+                "file, so it reads the directory rather than the committed tree",
+            )
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
+
+
 class TestNoCommittedFileOutsideOpenSpecCarriesAPreArchiveCitation(unittest.TestCase):
     """ADDED requirement: Source Files Cite Specifications by Path and Changes
     by Name."""
@@ -3565,7 +3638,7 @@ class TestNoCommittedFileOutsideOpenSpecCarriesAPreArchiveCitation(unittest.Test
         of them would pass the assertion below having read nothing. Anchors on
         files at four different depths rather than on a count, which any edit
         to the repository would move."""
-        walked = {path.relative_to(ROOT).as_posix() for path in walked_files()}
+        walked = {path.relative_to(ROOT).as_posix() for path in committed_files()}
         anchors = {
             "AGENTS.md",
             "README.md",
@@ -3595,17 +3668,19 @@ class TestNoCommittedFileOutsideOpenSpecCarriesAPreArchiveCitation(unittest.Test
         agent_directory = ROOT / ".claude"
         if not agent_directory.is_dir():
             self.skipTest("this repository has no .claude/ directory")
-        walked = {path.relative_to(ROOT).as_posix() for path in walked_files()}
+        walked = {path.relative_to(ROOT).as_posix() for path in committed_files()}
         # Independent of PRUNED_AT_ROOT_RELATIVE, which is what this test is
         # about. It excludes only the `worktrees` subtree, which Decision 7
         # prunes because it is a second checkout of this repository, and the
-        # any-depth entries, which are not at issue here.
+        # any-depth entries, which are not at issue here. Read from the
+        # tracked listing, as the walk is: an untracked file under `.claude/`
+        # is not committed and is not in the prohibition's scope.
         expected = {
-            path.relative_to(ROOT).as_posix()
-            for path in agent_directory.rglob("*")
-            if path.is_file()
-            and path.relative_to(agent_directory).parts[0] != "worktrees"
-            and not set(path.relative_to(ROOT).parts) & PRUNED_ANYWHERE
+            name
+            for name in tracked_names()
+            if name.startswith(".claude/")
+            and not name.startswith(".claude/worktrees/")
+            and not set(name.split("/")[:-1]) & PRUNED_ANYWHERE
         }
         missing = sorted(expected - walked)
         self.assertEqual(
@@ -3641,7 +3716,7 @@ class TestNoCommittedFileOutsideOpenSpecCarriesAPreArchiveCitation(unittest.Test
         or archived, since they move together with what they cite."""
         inside = sorted(
             path.relative_to(ROOT).as_posix()
-            for path in walked_files()
+            for path in committed_files()
             if path.relative_to(ROOT).as_posix().startswith("openspec/")
         )
         self.assertEqual(
@@ -7011,10 +7086,9 @@ def declares_a_service_image(document: object) -> bool:
 def compose_shaped_files(root: Path | None = None) -> tuple[Path, ...]:
     """Every file in the tree whose content is a stack definition.
 
-    Walks with this suite's existing `walked_files()` rather than a fresh
-    `rglob`, because it prunes the working trees AGENTS.md requires every change
-    to take. A naive walk finds a phantom `<worktree>/platform` and reports it
-    uncovered from the main working tree (design.md Decision 2, "Which walker").
+    Reads `committed_files()` rather than a fresh `rglob`, because it prunes
+    the working trees AGENTS.md requires every change to take. A naive walk
+    finds a phantom `<worktree>/platform` and reports it uncovered from the main working tree (design.md Decision 2, "Which walker").
 
     This was written while the `terraform` assertion above was still failing
     exactly that way, from an `rglob` this one deliberately did not copy.
@@ -7030,19 +7104,18 @@ def compose_shaped_files(root: Path | None = None) -> tuple[Path, ...]:
     `.yml`/`.yaml` suffix, because it is the shape that decides. A file that
     cannot be decoded or parsed is not a stack definition and is passed over.
 
-    The walk reads untracked files too -- deliberately, since that is the safe
-    direction for a coverage obligation, and the same trade `walked_files()`
-    already documents. The local-only consequence: an untracked stack-shaped
-    scratch file under a name the fetcher does not match (`platform/local.yml`)
-    turns this assertion red on a workstation while continuous integration,
-    which checks out tracked files only, stays green.
+    It reads committed files only. It used to walk the filesystem, which read
+    `.molecule-home/`'s vendored collections on a machine provisioned for
+    Molecule and reported their fixture Compose files uncovered while
+    continuous integration, which checks out tracked files only, stayed green.
+    A new stack file is therefore checked once it is staged, not before.
 
     Cached because the walk parses every file in the tree and several
     assertions call this; the cache is keyed on `root`, so a fixture tree is
     still read on its own.
     """
     found: list[Path] = []
-    for path in walked_files(root):
+    for path in committed_files(root):
         try:
             text = path.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
@@ -8230,14 +8303,14 @@ def lockfile_versions(name: str, path: Path | None = None) -> set[str]:
 def npm_manifest_directories(root: Path | None = None) -> set[str]:
     """Every repository directory holding a committed `package.json`, as `/a/b`.
 
-    Walks with `walked_files()`, which prunes `node_modules` -- so an installed
+    Reads `committed_files()`, which prunes `node_modules` -- so an installed
     dependency's own manifest is not mistaken for one this repository owns -- as
     well as `.claude/worktrees`, without which every change's working tree would
     report a phantom copy of this one.
     """
     return {
         repository_directory_of(path, root)
-        for path in walked_files(root)
+        for path in committed_files(root)
         if path.name == NPM_MANIFEST_NAME
     }
 
@@ -9736,12 +9809,12 @@ class TestTheConventionsFileStatesTheMoleculeSharedStateHazard(unittest.TestCase
 # Two fixes, deliberately separate, because the entry proposed the cheaper one
 # as though it were sufficient and it is not:
 #
-#   - `terraform_lockfile_directories()` now walks with `walked_files()`, whose
-#     prune list already carried `.worktrees` and `.claude/worktrees`. This is
-#     what turns the suite green; the assertion below fails against the `rglob`
-#     it replaces.
-#   - `.gitignore` now names both working-tree roots. This does NOTHING for the
-#     walk -- a filesystem walk does not consult git -- and is worth having for
+#   - `terraform_lockfile_directories()` now reads a pruned file set (then
+#     `walked_files()`, since `committed_files()`), whose prune list already
+#     carried `.worktrees` and `.claude/worktrees`. This is what turns the
+#     suite green; the assertion below fails against the `rglob` it replaces.
+#   - `.gitignore` now names both working-tree roots. That did nothing for the
+#     walk of the time, which did not consult git, and is worth having for
 #     the entry's other reason: it stops a `git add -A` from the main working
 #     tree staging a duplicate copy of the whole repository.
 #
@@ -12563,6 +12636,35 @@ def tracked_files(root: Path | None = None) -> dict[str, bytes]:
     on running a separately installed one.
     """
     base = ROOT if root is None else Path(root)
+    files: dict[str, bytes] = {}
+    missing: list[str] = []
+    for name in tracked_names(base):
+        path = base / name
+        try:
+            files[name] = path.read_bytes()
+        except (FileNotFoundError, NotADirectoryError):
+            missing.append(name)
+        except OSError as error:
+            raise TrackedFilesUnavailable(
+                f"the tracked file {name} could not be read: {error}"
+            ) from None
+    if missing:
+        raise TrackedFilesUnavailable(
+            "these paths are tracked but absent from the working tree, so the scans "
+            "would establish a property over files they never read: "
+            f"{', '.join(sorted(missing))}. A sparse or interrupted checkout is a "
+            "state to hear about rather than to scan around"
+        )
+    return files
+
+
+def tracked_names(root: Path | None = None) -> list[str]:
+    """Every tracked path, repository-relative, as `git ls-files` lists it.
+
+    `tracked_files()` reads each one; `committed_files()` needs only the names.
+    Raises `TrackedFilesUnavailable` rather than returning an empty listing.
+    """
+    base = ROOT if root is None else Path(root)
     try:
         listed = subprocess.run(
             ["git", "-C", str(base), "ls-files", "-z"],
@@ -12585,27 +12687,7 @@ def tracked_files(root: Path | None = None) -> dict[str, bytes]:
             f"`git ls-files` exited {listed.returncode} in {base}, so the tracked "
             f"files could not be enumerated: {detail!r}. Refusing to skip"
         )
-    names = [name for name in listed.stdout.decode("utf-8", errors="replace").split("\0") if name]
-    files: dict[str, bytes] = {}
-    missing: list[str] = []
-    for name in names:
-        path = base / name
-        try:
-            files[name] = path.read_bytes()
-        except (FileNotFoundError, NotADirectoryError):
-            missing.append(name)
-        except OSError as error:
-            raise TrackedFilesUnavailable(
-                f"the tracked file {name} could not be read: {error}"
-            ) from None
-    if missing:
-        raise TrackedFilesUnavailable(
-            "these paths are tracked but absent from the working tree, so the scans "
-            "would establish a property over files they never read: "
-            f"{', '.join(sorted(missing))}. A sparse or interrupted checkout is a "
-            "state to hear about rather than to scan around"
-        )
-    return files
+    return [name for name in listed.stdout.decode("utf-8", errors="replace").split("\0") if name]
 
 
 # Assembled rather than spelled out, for the same reason the private-key
