@@ -635,20 +635,6 @@ The section also asserts nothing about two properties of `.github/workflows/pre-
 
 **Re-checked**: 2026-10-19.
 
-## `assert-every-tfvars-assigns-its-required-variables`
-
-Nothing checks that each stack's `terraform.tfvars` assigns every variable its `variables.tf` declares without a `default`. A gap surfaces only at plan time: `pr-validation.yml`, `apply.yml` and `drift.yml` run with `-input=false`, so the plan fails `No value for required variable`, the required check fails, and the nightly drift sweep fails every night and takes the shared heartbeat with it. Detecting it that way needs a credential, a workspace and a network. The same fact is a static read for `.github/tests`; the only real work is a small parser of `variable` blocks and `.tfvars` assignments without HCL machinery the suite does not have. `.github/tests/test_a_second_environment.py` already reads `terraform.tfvars` and can lend its approach. Both stacks currently assign `server_type`.
-
-**Kind**: `fix`. A static assertion with no delta or decision.
-
-**Waits on**: `nothing`.
-
-**Design with**: `nothing`.
-
-**Recorded by**: `add-a-staging-environment`'s code review (2026-09-10), which met the gap as that change's own in-flight state (`server_type` unassigned in `main-staging`); a check failing the tree still being assembled belonged to a later change.
-
-**Re-checked**: 2026-10-19.
-
 ## `assert-markdown-prose-is-not-hard-wrapped`
 
 `AGENTS.md` says "Do not hard-wrap prose. Keep each paragraph on a single line". Nothing checks it, and hard wraps re-accumulate silently: the sweep this entry was recorded beside (2026-09-11) rewrapped 72 of 211 tracked markdown files, and the wraps had appeared in every week of the project. Under the rule, any prose paragraph spanning more than one line is a violation, so no threshold is needed. The detector must exempt structural breaks: fenced and indented code, tables, YAML frontmatter, list-item continuations, and lines ending in two spaces or a backslash. Scope is markdown only; comments in `.py`/`.yml`/`.sh`/`.tf` stay wrapped (`.pre-commit-config.yaml`'s comments are the shape to preserve). It is not a formatter: Prettier's `proseWrap` would rewrite style across the tree and archived records, and there is no Node toolchain to hang it on; markdownlint has no such rule. It fits `.github/tests` as one new module.
