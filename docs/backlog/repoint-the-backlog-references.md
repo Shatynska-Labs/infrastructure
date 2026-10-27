@@ -1,6 +1,6 @@
 ---
 kind: fix
-waits_on: [move-the-backlog-into-entry-files]
+waits_on: []
 design_with: []
 recorded_by: move-the-backlog-into-entry-files
 re_checked: 2026-10-27

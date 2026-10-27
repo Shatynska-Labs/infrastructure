@@ -24,5 +24,6 @@
 ## 5. Ship
 
 - [x] 5.1 Regenerate the conversion on the freshly fetched trunk (design D7): drop the conversion commit, rebase onto the trunk, re-run 1.1 and 1.2 as a new commit over whatever has merged since, and give any requirement a merged branch brought into the main specifications citing `docs/backlog.md` a MODIFIED delta of its own; a citation inside another live change's delta is corrected in that delta. Then 4.1 and 4.2.
-- [ ] 5.2 Open the pull request, with the converter's report and D7's notice to the branches in flight. Nothing in it reaches a host, so `confirm` is to be waived as a change with no observation to make, on the operator's word, and the waiver recorded here.
-- [ ] 5.3 Archive the change: delete the backlog entry `move-the-backlog-into-entry-files`, run `openspec archive move-the-backlog-into-entry-files --yes`, and open the record's pull request.
+- [x] 5.2 Open the pull request, with the converter's report and D7's notice to the branches in flight. Nothing in it reaches a host, so `confirm` is to be waived as a change with no observation to make, on the operator's word, and the waiver recorded here.
+  - Opened as Shatynska-Labs/infrastructure#295 and merged on 2026-10-27 (`2eb12a3`). **Waiver:** on 2026-10-27 the operator waived `confirm` ("skip the confirmation") as a change with no externally observable effect: it moves documentation and tests and touches no host, workflow behaviour or Terraform.
+- [x] 5.3 Archive the change: delete the backlog entry `move-the-backlog-into-entry-files`, run `openspec archive move-the-backlog-into-entry-files --yes`, and open the record's pull request.
