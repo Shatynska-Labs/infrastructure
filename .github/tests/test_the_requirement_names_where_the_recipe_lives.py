@@ -257,8 +257,8 @@ def documents_holding_the_recipe(root: Path | None = None) -> list[str]:
     document at all: a check that read nothing would otherwise report success
     having verified nothing, and this one's whole result is an empty list.
     """
-    root = ROOT if root is None else root
     documents = markdown_documents(root)
+    root = ROOT if root is None else root
     if not documents:
         raise AssertionError(
             f"the sweep from {root} reached no Markdown document at all, so the "

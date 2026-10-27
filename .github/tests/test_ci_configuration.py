@@ -214,10 +214,9 @@ def terraform_lockfile_directories(root: Path | None = None) -> set[str]:
     was a red suite a session had to learn to disbelieve, which is the habit this
     repository refuses everywhere else.
 
-    `.gitignore` is not an alternative to this, and the two are not the same fix.
-    A filesystem walk does not consult git, so ignoring `.claude/worktrees/`
-    leaves this walk finding precisely what it found before. Both working-tree
-    roots are ignored for the other reason -- it stops a `git add -A` from the
+    The repository read is now the tracked listing, so an untracked working tree
+    is out of it whatever `.gitignore` says; a fixture walk still relies on the
+    prune list. Both working-tree roots are ignored for another reason -- it stops a `git add -A` from the
     main working tree staging a duplicate copy of the whole repository -- and
     `TestTheWorkingTreeRootsAreIgnored` holds them there.
 
@@ -3481,14 +3480,9 @@ WRAPPED_CITATION = re.compile(
 # would inflict on itself on every run rather than one a developer provokes and
 # can see. That is what separates it from the untracked scratch file design
 # Decision 7 deliberately accepts.
-# NOTE: this list and `PRUNED_AT_ROOT_RELATIVE` below hand-mirror part of
-# `.gitignore`, and nothing keeps the two in step. The prohibition is over
-# *committed* files, so an ignored path added to `.gitignore` later -- a second
-# Galaxy role from `ansible/requirements.yml`, a repo-local `.venv`,
-# `.pytest_cache` -- becomes readable here and can turn the check red on a file
-# nobody committed. That is local-only; continuous integration checks out a
-# clean tree. When adding an ignore rule for something that lands inside the
-# working tree, add it here too.
+# NOTE: the repository read (`committed_files()`) lists tracked files, so an
+# ignored path never reaches it whatever this list says; these lists matter for
+# what the tracked set still holds (`openspec/`) and for fixture-tree walks.
 PRUNED_ANYWHERE = frozenset({".git", ".terraform", "__pycache__", "node_modules"})
 
 # Pruned only at their path relative to the walk root. `.claude` is NOT pruned
@@ -3572,7 +3566,7 @@ def pre_archive_citations(root: Path | None = None) -> list[str]:
     root = ROOT if root is None else root
     if not files:
         raise AssertionError(
-            f"the walk from {root} reached no file at all, so every citation "
+            f"the read from {root} reached no file at all, so every citation "
             f"assertion over it would pass having read nothing"
         )
     offences: list[str] = []
@@ -3589,6 +3583,49 @@ def pre_archive_citations(root: Path | None = None) -> list[str]:
             relative = path.relative_to(root).as_posix()
             offences.append(f"{relative}:{line}: {' '.join(matched.split())}")
     return offences
+
+
+class TestTheRepositoryReadIsTheTrackedListing(unittest.TestCase):
+    """`docs/backlog.md`'s `hold-the-whole-static-suite-to-its-own-constraints`,
+    taken as a fix: `committed_files()` reads tracked files, not the directory.
+
+    A checkout holds nothing untracked, so without this nothing goes red when
+    the read reverts to a walk -- which is how the defect escaped before. Runs
+    the suite's own module against a scratch repository holding one tracked
+    file and one untracked file under `.molecule-home/`.
+    """
+
+    def test_an_untracked_file_is_not_read_as_committed(self) -> None:
+        root = Path(tempfile.mkdtemp(prefix="ci-suite-tracked-"))
+        try:
+            (root / "tracked.txt").write_text("tracked\n")
+            vendored = root / ".molecule-home" / "x"
+            vendored.mkdir(parents=True)
+            subprocess.run(["git", "-C", str(root), "init", "-q"], check=True, timeout=60)
+            subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, timeout=60)
+            (vendored / "compose.yml").write_text("services: {web: {image: nginx}}\n")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    "-c",
+                    "import test_ci_configuration as t; "
+                    "print(*sorted(p.relative_to(t.ROOT).as_posix() for p in t.committed_files()))",
+                ],
+                cwd=SUITE_DIR,
+                env=dict(os.environ, REPO_ROOT=str(root), PYTHONPATH=str(SUITE_DIR)),
+                capture_output=True,
+                text=True,
+                timeout=120,
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(
+                "tracked.txt",
+                result.stdout.strip(),
+                "the repository read reached something other than the tracked "
+                "file, so it reads the directory rather than the committed tree",
+            )
+        finally:
+            shutil.rmtree(root, ignore_errors=True)
 
 
 class TestNoCommittedFileOutsideOpenSpecCarriesAPreArchiveCitation(unittest.TestCase):
@@ -7050,8 +7087,8 @@ def compose_shaped_files(root: Path | None = None) -> tuple[Path, ...]:
     """Every file in the tree whose content is a stack definition.
 
     Reads `committed_files()` rather than a fresh `rglob`, because it prunes
-    the working trees AGENTS.md requires every change to take. A naive walk finds a phantom `<worktree>/platform` and reports it
-    uncovered from the main working tree (design.md Decision 2, "Which walker").
+    the working trees AGENTS.md requires every change to take. A naive walk
+    finds a phantom `<worktree>/platform` and reports it uncovered from the main working tree (design.md Decision 2, "Which walker").
 
     This was written while the `terraform` assertion above was still failing
     exactly that way, from an `rglob` this one deliberately did not copy.
@@ -9774,10 +9811,10 @@ class TestTheConventionsFileStatesTheMoleculeSharedStateHazard(unittest.TestCase
 #
 #   - `terraform_lockfile_directories()` now reads a pruned file set (then
 #     `walked_files()`, since `committed_files()`), whose prune list already
-#     carried `.worktrees` and `.claude/worktrees`. This is what turns the suite green; the assertion below fails against the `rglob`
-#     it replaces.
-#   - `.gitignore` now names both working-tree roots. This does NOTHING for the
-#     walk -- a filesystem walk does not consult git -- and is worth having for
+#     carried `.worktrees` and `.claude/worktrees`. This is what turns the
+#     suite green; the assertion below fails against the `rglob` it replaces.
+#   - `.gitignore` now names both working-tree roots. That did nothing for the
+#     walk of the time, which did not consult git, and is worth having for
 #     the entry's other reason: it stops a `git add -A` from the main working
 #     tree staging a duplicate copy of the whole repository.
 #
