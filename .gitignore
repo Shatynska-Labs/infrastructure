@@ -30,10 +30,8 @@ secrets.auto.tfvars
 # Untracked and unignored, they showed up in `git status` and stood one
 # `git add -A` from the main working tree away from being committed wholesale.
 #
-# This does NOT keep them out of the CI-configuration suite's walks: a
-# filesystem walk does not consult git. That is `walked_files()`'s prune list,
-# and `terraform_lockfile_directories()` explains why the two are separate
-# fixes. Only `.claude/worktrees/` is ignored, not `.claude/`, whose
+# The CI-configuration suite does not depend on this: its repository read
+# lists tracked files, and its fixture walks prune these roots by name. Only `.claude/worktrees/` is ignored, not `.claude/`, whose
 # `commands/` and `skills/` are committed.
 .worktrees/
 .claude/worktrees/

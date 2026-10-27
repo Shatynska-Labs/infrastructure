@@ -85,7 +85,7 @@ from test_ci_configuration import (
     load_yaml,
     read_text,
     require_external_tools,
-    walked_files,
+    committed_files,
     step_label,
     steps,
     triggers,
@@ -2096,14 +2096,10 @@ class TestEveryVaultedValueIsWhereThePreflightReachesIt(unittest.TestCase):
     """
 
     def _candidates(self):
-        # Walked from the REPOSITORY root and filtered, not walked from
-        # `ansible/`. `walked_files` builds its prune keys relative to the root
-        # it is given, so under `walked_files(ANSIBLE_DIR)` the entry
-        # `ansible/roles/geerlingguy.docker` becomes `roles/geerlingguy.docker`
-        # and never matches -- and a developer who has run `ansible-galaxy role
-        # install` would then have this sweep read installed content, against a
-        # docstring promising a static read of committed files.
-        for path in walked_files():
+        # The repository's committed files, filtered to `ansible/`: installed
+        # Galaxy content is untracked and so never read, against a docstring
+        # promising a static read of committed files.
+        for path in committed_files():
             relative = path.relative_to(ROOT).as_posix()
             if not relative.startswith("ansible/"):
                 continue
