@@ -105,6 +105,7 @@ from test_ci_configuration import (
     PR_VALIDATION,
     ROOT,
     WORKFLOWS,
+    committed_files,
     compact,
     jobs,
     load_yaml,
@@ -354,9 +355,8 @@ def old_root_occurrences(root: Path | None = None) -> list[str]:
     nobody here wrote. The widening to a bare `<directory>/` reference is what
     made it likely: that shape is common in third-party Ansible content where
     the prefixed path never was. `AGENTS.md` scopes this suite to a static read
-    of a COMMITTED file, and vendored untracked content is not committed. See
-    `docs/backlog.md` `hold-the-whole-static-suite-to-its-own-constraints`, which names this class and recommends this
-    helper.
+    of a COMMITTED file, and vendored untracked content is not committed;
+    `committed_files()` now gives every repository-scope read the same set.
 
     A `root` argument means a scratch tree instead, which is NOT a repository
     and has no tracked files, so those are walked. That path exists for the
@@ -429,15 +429,18 @@ COMMENT_MARKER = re.compile(r"^\s*(?:#+|//+|--)\s?")
 def stack_root_files(root: Path | None = None) -> list[Path]:
     """Every committed file under the stack root.
 
-    `walked_files()` prunes `.terraform` anywhere, so a provider cache -- whose
-    vendored CHANGELOG is arbitrary third-party prose and would be read as this
-    repository's own text -- is not reached. Everything else under the root is,
-    including files no parser of this suite's would open.
+    Read from `committed_files()`, so a provider cache -- whose vendored
+    CHANGELOG is arbitrary third-party prose and would be read as this
+    repository's own text -- is not reached: it is untracked, and `.terraform`
+    is pruned anywhere besides. Everything else under the root is, including
+    files no parser of this suite's would open.
     """
     base = (ROOT if root is None else root) / "terraform" / "stacks"
     if not base.is_dir():
         return []
-    return walked_files(base)
+    if root is not None:
+        return walked_files(base)
+    return [path for path in committed_files() if path.is_relative_to(base)]
 
 
 def committed_prose(text: str) -> str:
@@ -1842,7 +1845,7 @@ class TestNoCommittedFileStillNamesTheOldTerraformRoot(unittest.TestCase):
 
 class TestTheSweepReadsCommittedFilesOnly(unittest.TestCase):
     """DERIVED -- `AGENTS.md` scopes this suite to a static read of a COMMITTED
-    file, and `docs/backlog.md` `hold-the-whole-static-suite-to-its-own-constraints` names the class this closes.
+    file, and `committed_files()` closes the same class suite-wide.
 
     `old_root_occurrences()` selected its files with a filesystem walk until
     this was written, and that walk prunes four directory names of which
@@ -1900,7 +1903,7 @@ class TestTheSweepReadsCommittedFilesOnly(unittest.TestCase):
             "an UNTRACKED file naming the old root was reported as an offence: "
             f"{reported}. This sweep's subject is the committed file; reading a "
             "developer's provisioned content makes it red on a working machine and "
-            "green on a runner, which is `docs/backlog.md` `hold-the-whole-static-suite-to-its-own-constraints`'s class",
+            "green on a runner",
         )
 
 

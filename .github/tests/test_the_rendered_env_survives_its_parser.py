@@ -64,12 +64,9 @@ readable property -- that the report emits no value and no escaped value, and
 that what its naming branch expands is an accumulator built from the escaping
 point's own name parameter.
 
-Nor that this module obeys the static suite's own constraints. Those are
-asserted over `test_ci_configuration.py` by name and, for the
-no-privileged-resource half, over every module in this directory; the rest are a
-reviewer's to check. `docs/backlog.md`
-`hold-the-whole-static-suite-to-its-own-constraints` is the entry that would
-widen them.
+Nor that this module obeys the static suite's own constraints beyond what
+`TestEveryModuleInTheSuiteDirectoryNeedsNoPrivilegedResource` asserts over every
+module in this directory; the rest is a reviewer's to check.
 """
 
 from __future__ import annotations

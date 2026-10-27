@@ -619,22 +619,6 @@ That change's code review built a rig, a stubbed `docker` on `PATH` answering so
 
 **Re-checked**: 2026-10-19.
 
-## `hold-the-whole-static-suite-to-its-own-constraints`
-
-The suite-wide half is done: `TestEveryModuleInTheSuiteDirectoryNeedsNoPrivilegedResource` in `.github/tests/test_ci_configuration.py` holds every module in the directory to the suite's no-network, no-credential, no-container, no-Terraform constraints. What remains is the absorbed `prune-the-repository-walkers-of-provisioned-content` half: repository-scope walkers read a directory, not the committed tree.
-
-`compose_shaped_files()` (used by `TestEveryComposeFileDeclaringAServiceImageIsCovered`) walks through `walked_files()`, which prunes `.git`, `.terraform`, `__pycache__`, `node_modules`, `openspec`, the Galaxy role and the worktree directories, but not `.molecule-home/`. On a developer machine provisioned for Molecule it finds `community.docker`/`community.general` fixture Compose files there and fails, while CI never provisions Molecule and stays green; it is also a race while Molecule creates and removes `tmp/` under that directory (observed 2026-09-11). The fix is to re-point repository-scope walkers at the existing `tracked_files()` helper in the same module, not to prune one more directory. Deleting `.molecule-home/` to get green throws away provisioning.
-
-**Kind**: `fix`. No delta; the helper already exists.
-
-**Waits on**: `nothing`.
-
-**Design with**: `share-the-static-suites-test-arrangement`, which gives the same suite a support module.
-
-**Recorded by**: `alert-on-certificate-expiry` (the self-check half), and the test author deriving `cache-the-apt-index-within-a-converge`, who met the walker half as a red suite; neither change's subject was the suite's walkers.
-
-**Re-checked**: 2026-10-19.
-
 ## `complete-the-autoupdate-workflow-s-own-checks`
 
 `open-autoupdate-pr-with-app-token` added a section to `.github/tests/test_ci_configuration.py` that finds pull-request-opening steps and asserts their identity. Its helpers have four reading limits, each a false positive on a legitimate change: `token_inputs` reads only step-level `env:` and misses a job- or workflow-level `GH_TOKEN` (the likeliest to bite, the first time a workflow opens a PR with `gh`); `step_opens_a_pull_request` matches a POST and `/pulls` anywhere in one `run:` block; `secrets_referenced_by` scans the whole job, not the identity path (`HEARTBEAT_PING_KEY` already sits in that workflow); `readme_sections` splits at any `#` line, including inside code fences.
@@ -939,7 +923,7 @@ The `.github/tests` suite has no shared test arrangement: several modules import
 
 **Waits on**: `nothing`.
 
-**Design with**: `hold-the-whole-static-suite-to-its-own-constraints`, which also changes how that suite's modules read the tree.
+**Design with**: `nothing`.
 
 **Recorded by**: `sync-ai-toolkit-workflow-v10`, which recorded the shared test arrangement as none when taking ai-toolkit's development-workflow v10; creating one is not a sync.
 
