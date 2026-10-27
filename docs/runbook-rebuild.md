@@ -234,7 +234,7 @@ gh workflow run host-converge.yml --ref main -f stack=main-staging
 
 **Then read it, by phase 10's recipe** — `gh workflow run` prints no run id and returns before the run exists, so take the id of the run whose `createdAt` is after your dispatch and `gh run watch <id>`. A dispatch nobody reads is not a check. What you want is a green run; `changed=0` is the expected result and not a sign it did nothing, because this is the same play phase 7 has just run by hand.
 
-**`--ref main` is your own discipline here, not the workflow's.** Phase 10's deploy refuses a dispatch from any other ref before it names an Environment; this workflow has no such guard, so a dispatch from an unmerged branch would converge a real host with unreviewed Ansible. `docs/backlog/` `guard-the-converge-dispatch-to-the-default-branch` is the entry for closing that.
+**`--ref main` is required, and the workflow enforces it.** Like phase 10's deploy, it refuses a dispatch from any ref but the default branch before it names an Environment, so a dispatch from an unmerged branch fails rather than converging a real host with unreviewed Ansible.
 
 The Environment secrets survive a rebuild and do not need re-entering, so there is no `gh secret set` here — phase 9 is where one is. If you are rebuilding a host whose keypair was also lost and you re-enter `ANSIBLE_SSH_PRIVATE_KEY`, note that `--env` takes the **GitHub Environment's** name, which is `main-staging` — the stack's name, not the Ansible group `staging` that the `--vault-id` and `group_vars` take. A mistyped value fails with a `404` rather than silently.
 
