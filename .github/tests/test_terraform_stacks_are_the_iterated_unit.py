@@ -172,7 +172,7 @@ OLD_ROOT_DIRECTORY = OLD_ROOT_SEGMENT.rpartition("/")[2]
 #
 # The second was added after code review found two committed files naming the
 # directory without its `terraform/` prefix -- a `.tftest.hcl` comment reading
-# "(not environments/prod)" and a `docs/backlog.md` entry -- over which
+# "(not environments/prod)" and a backlog entry -- over which
 # the sweep reported a clean tree. The instances were corrected; this closes
 # the class.
 #
@@ -2016,7 +2016,7 @@ class TestTheseReadsDiscriminate(unittest.TestCase):
     def test_the_old_root_sweep_reports_a_bare_directory_reference(self) -> None:
         """The defect this pair was added for. Two committed files named the
         directory WITHOUT its `terraform/` prefix -- a `.tftest.hcl` comment
-        and a `docs/backlog.md` entry -- and the sweep reported a clean
+        and a backlog entry -- and the sweep reported a clean
         tree over both. The instances were corrected before this was written,
         so the real tree establishes nothing about it; only a fixture can."""
         tree = self._tree()

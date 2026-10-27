@@ -1847,7 +1847,7 @@ class TestHostConvergeDiscoveryFailsClosed(
 # --------------------------------------------------------------------------
 # ADDED DIRECTLY AS A FIX, NOT DERIVED FROM A CHANGE'S DELTA SPECS.
 #
-# `docs/backlog.md` `guard-the-converge-dispatch-to-the-default-branch`:
+# The backlog entry `guard-the-converge-dispatch-to-the-default-branch`:
 # `platform-deploy.yml` refuses a `workflow_dispatch` from any ref but the
 # default branch, as the first step of its `discover` job, before any
 # Environment is named or any credential is in reach. This workflow made the

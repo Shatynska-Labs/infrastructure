@@ -147,7 +147,7 @@ REPLACEMENTS = {
 #       declaration by its own module, so a constant left behind while the
 #       declaration moves fails there.
 #
-#   `docs/change-queue.md` -- now `docs/backlog.md` -- WAS EXEMPT AND IS NOT
+#   `docs/change-queue.md` -- now `docs/backlog/` -- WAS EXEMPT AND IS NOT
 #       ANY MORE, which is the
 #       exemption machinery working rather than a loosening. The queue entry
 #       for `rename-the-external-services` named all four retired literals as

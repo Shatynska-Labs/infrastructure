@@ -45,7 +45,7 @@ Each reports its own condition, distinguishably: an absent enumeration is remedi
 
 Unlike `app-deploy`'s reclamation, which must never fail a deploy that already succeeded, this unit has no caller to damage. It fails, so the host records it.
 
-**Nothing scrapes the journal.** `systemctl list-units --failed` and `HostDiskPressure` (at 90% full, which is very late) are the only signals. Making a silently-stopped prune alertable needs node-exporter's textfile collector and is recorded in `docs/backlog.md` as `alert-on-a-scheduled-units-own-output`.
+**Nothing scrapes the journal.** `systemctl list-units --failed` and `HostDiskPressure` (at 90% full, which is very late) are the only signals. Making a silently-stopped prune alertable needs node-exporter's textfile collector and is recorded in `docs/backlog/` as `alert-on-a-scheduled-units-own-output`.
 
 ## When a run reports a refusal
 
@@ -54,7 +54,7 @@ A completed run reports `considered N, removed M, refused R`. `refused` counts t
 **`refused 0` is the normal reading, and a non-zero one is worth acting on.** Two causes are expected here:
 
 - *"container … is using its referenced image"* — **the keep set is wrong.** Every container's image belongs to it by construction, so a container-held image should never have been offered, and the runtime's refusal is the only thing that stood between a defective keep set and an image in use. Find out why that container's image was missing from the union before anything else.
-- *"image is referenced in multiple repositories"* — the keep set is fine. An untagged image carrying more than one repository reference is removed by identity, and the runtime refuses that unless forced. This run cannot reclaim it, and will offer and be refused on it every week until something else removes it. Not urgent, but it will not go away on its own; `docs/backlog.md` carries the entry for reclaiming one.
+- *"image is referenced in multiple repositories"* — the keep set is fine. An untagged image carrying more than one repository reference is removed by identity, and the runtime refuses that unless forced. This run cannot reclaim it, and will offer and be refused on it every week until something else removes it. Not urgent, but it will not go away on its own; `docs/backlog/` carries the entry for reclaiming one.
 
 The line carries the runtime's own text, so those two are what to *expect* rather than the whole set it can produce — `image has dependent child images` is a third, on a host that builds images rather than pulling them, and neither it nor the first can be overridden with `-f`. Read an unfamiliar message as the runtime's, not as this script's classification of it.
 
