@@ -1,4 +1,4 @@
-<!-- ai-toolkit:development-workflow 1.0.0 sha256:9d7d126cf4c199c186f05c110ed882aaac09ecdec36c16ac11390c95b5e8031d -->
+<!-- ai-toolkit:development-workflow-direct 1.0.0 sha256:9d7d126cf4c199c186f05c110ed882aaac09ecdec36c16ac11390c95b5e8031d -->
 <!-- Generated. Do not edit inside this block — it is replaced on update.
      Project-specific conventions belong outside the markers. -->
 
@@ -143,7 +143,7 @@ Such a branch is created and left: it takes no working tree and does not become 
 **The repository is the source of truth.** Do not rely on earlier conversation context for information the repository itself can supply. Prefer reading a file, a spec or a commit over recalling what a previous exchange said about it.
 
 **Markdown prose.** Do not hard-wrap prose. Keep each paragraph on a single line whatever its length. Use a line break only where Markdown's own structure requires one.
-<!-- /ai-toolkit:development-workflow -->
+<!-- /ai-toolkit:development-workflow-direct -->
 
 <!-- ai-toolkit:test-plan v3 -->
 <!-- Copied from ai-toolkit's rules/test-plan.md. Do not edit inside this block — it is replaced on update.
