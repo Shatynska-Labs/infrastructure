@@ -630,9 +630,10 @@ class TestTheConventionDetectorsFire(unittest.TestCase):
         self.assertIn(OLD_BACKLOG, project_conventions(text))
 
     def test_the_marker_version_is_read(self) -> None:
-        self.assertEqual("12", WORKFLOW_MARKER.search(self.AGENTS).group("version"))
-        old = self.AGENTS.replace("v12", "v10")
-        self.assertEqual("10", WORKFLOW_MARKER.search(old).group("version"))
+        marker = "<!-- ai-toolkit:development-workflow {} sha256:" + "a" * 64 + " -->"
+        self.assertEqual("1", WORKFLOW_MARKER.search(marker.format("1.0.0")).group("major"))
+        self.assertEqual("2", WORKFLOW_MARKER.search(marker.format("2.3.4")).group("major"))
+        self.assertIsNone(WORKFLOW_MARKER.search(self.AGENTS.replace("v12", "v10")))
 
 
 if __name__ == "__main__":
