@@ -8034,7 +8034,7 @@ EXACT_NPM_VERSION = re.compile(r"^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$")
 SETUP_NODE = "setup-node"
 MUTABLE_ACTION_REFS = frozenset({"", "main", "master", "head", "latest", "trunk", "develop"})
 
-MANAGED_BLOCK_END = "<!-- /ai-toolkit:development-workflow -->"
+MANAGED_BLOCK_END = "<!-- /ai-toolkit:development-workflow-direct -->"
 
 # The rule's own words, because the delta requires the assertion to be written
 # "so that rephrasing the rule fails it, rather than so that a rephrasing which

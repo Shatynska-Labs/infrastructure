@@ -277,7 +277,7 @@ def project_conventions(agents_text: str) -> str:
 
 
 WORKFLOW_MARKER = re.compile(
-    r"<!--\s*ai-toolkit:development-workflow\s+(?P<major>\d+)\.\d+\.\d+\s+sha256:[0-9a-f]{64}\s*-->"
+    r"<!--\s*ai-toolkit:development-workflow-direct\s+(?P<major>\d+)\.\d+\.\d+\s+sha256:[0-9a-f]{64}\s*-->"
 )
 
 
@@ -630,7 +630,7 @@ class TestTheConventionDetectorsFire(unittest.TestCase):
         self.assertIn(OLD_BACKLOG, project_conventions(text))
 
     def test_the_marker_version_is_read(self) -> None:
-        marker = "<!-- ai-toolkit:development-workflow {} sha256:" + "a" * 64 + " -->"
+        marker = "<!-- ai-toolkit:development-workflow-direct {} sha256:" + "a" * 64 + " -->"
         self.assertEqual("1", WORKFLOW_MARKER.search(marker.format("1.0.0")).group("major"))
         self.assertEqual("2", WORKFLOW_MARKER.search(marker.format("2.3.4")).group("major"))
         self.assertIsNone(WORKFLOW_MARKER.search(self.AGENTS.replace("v12", "v10")))
