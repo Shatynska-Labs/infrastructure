@@ -276,7 +276,9 @@ def project_conventions(agents_text: str) -> str:
     return rest if following is None else rest[: following.start()]
 
 
-WORKFLOW_MARKER = re.compile(r"<!--\s*ai-toolkit:development-workflow\s+v(?P<version>\d+)\s*-->")
+WORKFLOW_MARKER = re.compile(
+    r"<!--\s*ai-toolkit:development-workflow\s+(?P<major>\d+)\.\d+\.\d+\s+sha256:[0-9a-f]{64}\s*-->"
+)
 
 
 # --------------------------------------------------------------------------
@@ -408,18 +410,20 @@ class TestTheOldBacklogFileIsGone(unittest.TestCase):
 class TestTheWorkflowBlockAndConventionsFollowTheMove(unittest.TestCase):
     """DERIVED -- design D4 and D6, tasks 2.1 and 2.2."""
 
-    def test_the_workflow_block_is_marked_v12(self) -> None:
-        """DERIVED -- task 2.1: marker `v12`. Establishes the marker only, not
-        that the body is an unedited copy of the fragment, which lives outside
-        this repository. At least v12 rather than exactly, so a later sync is
-        not a regression of this change."""
+    def test_the_workflow_block_is_at_least_1_0_0(self) -> None:
+        """DERIVED -- task 2.1, restated for the toolkit's versions: `v12` was
+        renumbered `1.0.0`. Establishes the marker only, not that the body is
+        an unedited copy of the fragment, which lives outside this repository.
+        At least 1.0.0 rather than exactly, so a later sync is not a regression
+        of this change."""
         match = WORKFLOW_MARKER.search((ROOT / "AGENTS.md").read_text(encoding="utf-8"))
         self.assertIsNotNone(match, "AGENTS.md carries no development-workflow marker")
-        self.assertGreaterEqual(int(match.group("version")), 12)
+        self.assertGreaterEqual(int(match.group("major")), 1)
 
-    def test_the_workstreams_readme_is_seeded(self) -> None:
-        """DERIVED -- design D4, task 2.1: `docs/workstreams/README.md`."""
-        self.assertTrue((ROOT / "docs" / "workstreams" / "README.md").is_file())
+    def test_the_workstreams_rules_are_seeded(self) -> None:
+        """DERIVED -- design D4, task 2.1: the rules, now in
+        `docs/workstreams/AGENTS.md` rather than its `README.md`."""
+        self.assertTrue((ROOT / "docs" / "workstreams" / "AGENTS.md").is_file())
 
     def test_the_project_conventions_do_not_name_the_old_backlog(self) -> None:
         """DERIVED -- task 2.2, design D6: the two pointers in `AGENTS.md`'s
