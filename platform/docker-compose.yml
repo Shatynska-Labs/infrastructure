@@ -362,7 +362,7 @@ services:
       start_period: 20s
 
   alertmanager:
-    image: prom/alertmanager:v0.34.1
+    image: prom/alertmanager:v0.34.2
     restart: unless-stopped
     labels:
       # apply-shipped-config-on-deploy -- see the prometheus service above for
@@ -388,7 +388,7 @@ services:
       start_period: 15s
 
   grafana:
-    image: grafana/grafana:13.2.4
+    image: grafana/grafana:13.3.0
     restart: unless-stopped
     labels:
       # apply-shipped-config-on-deploy -- see the prometheus service above for
