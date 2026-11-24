@@ -186,7 +186,7 @@ services:
   # ---------------------------------------------------------------------
 
   node-exporter:
-    image: prom/node-exporter:v1.12.1
+    image: prom/node-exporter:v1.13.1
     restart: unless-stopped
     command:
       - --path.procfs=/host/proc
@@ -223,7 +223,7 @@ services:
     # reading container layer metadata under Docker's containerd-snapshotter
     # storage backend, which this host uses -- see
     # fix-cadvisor-containerd-snapshotter's design.md.
-    image: ghcr.io/google/cadvisor:v0.60.6
+    image: ghcr.io/google/cadvisor:v0.61.1
     restart: unless-stopped
     volumes:
       - /:/rootfs:ro
@@ -248,7 +248,7 @@ services:
       start_period: 15s
 
   postgres-exporter:
-    image: quay.io/prometheuscommunity/postgres-exporter:v0.20.1
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.21.1
     restart: unless-stopped
     environment:
       # `pgexporter` is a fixed, non-secret role name (documented in
@@ -362,7 +362,7 @@ services:
       start_period: 20s
 
   alertmanager:
-    image: prom/alertmanager:v0.34.2
+    image: prom/alertmanager:v0.35.0
     restart: unless-stopped
     labels:
       # apply-shipped-config-on-deploy -- see the prometheus service above for
@@ -388,7 +388,7 @@ services:
       start_period: 15s
 
   grafana:
-    image: grafana/grafana:13.3.0
+    image: grafana/grafana:13.3.1
     restart: unless-stopped
     labels:
       # apply-shipped-config-on-deploy -- see the prometheus service above for
